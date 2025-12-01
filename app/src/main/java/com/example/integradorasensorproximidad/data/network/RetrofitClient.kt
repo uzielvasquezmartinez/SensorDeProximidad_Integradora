@@ -5,15 +5,10 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-/**
- * Objeto Singleton para gestionar la instancia de Retrofit.
- */
+
 object RetrofitClient {
 
-    // #################################################################
     // TODO: UZIEL, MODIFICA ESTA URL POR LA DIRECCIÓN DE TU API
-    // Ejemplo: "https://api.tuproyecto.com/" o "http://192.168.1.100:8080/"
-    // #################################################################
     private const val BASE_URL = "https://change.me/api/"
 
     // Creamos un interceptor de logging para ver las peticiones y respuestas en el Logcat

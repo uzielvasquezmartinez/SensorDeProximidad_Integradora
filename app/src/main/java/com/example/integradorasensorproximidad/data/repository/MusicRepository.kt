@@ -78,6 +78,22 @@ class MusicRepository {
     }
 
     /**
+     * Borra una playlist de la API remota.
+     */
+    suspend fun deletePlaylist(id: Int): Result<Unit> {
+        return try {
+            val response = RetrofitClient.apiService.deletePlaylist(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al borrar la playlist: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Escanea el almacenamiento compartido del dispositivo en busca de archivos de audio.
      */
     fun getLocalSongs(context: Context): List<Song> {

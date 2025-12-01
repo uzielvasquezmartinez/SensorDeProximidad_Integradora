@@ -17,7 +17,8 @@ data class PlaylistsUiState(
     val playlists: List<Playlist> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val showCreateDialog: Boolean = false // Controla la visibilidad del diálogo
+    val showCreateDialog: Boolean = false,
+    val playlistToDelete: Playlist? = null // Guarda la playlist a borrar para mostrar el diálogo
 )
 
 class PlaylistsViewModel : ViewModel() {
@@ -36,14 +37,14 @@ class PlaylistsViewModel : ViewModel() {
      */
     fun loadPlaylists() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) } // Limpiamos errores anteriores
+            _uiState.update { it.copy(isLoading = true, error = null) }
 
             val result = repository.getPlaylists()
 
-            result.onSuccess {
+            result.onSuccess { playlists ->
                 _uiState.update {
                     it.copy(
-                        playlists = result.getOrNull() ?: emptyList(),
+                        playlists = playlists,
                         isLoading = false
                     )
                 }
@@ -58,39 +59,60 @@ class PlaylistsViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Muestra el diálogo para crear una nueva playlist.
-     */
+    // --- Lógica de Creación ---
     fun onShowCreateDialog() {
         _uiState.update { it.copy(showCreateDialog = true) }
     }
 
-    /**
-     * Oculta el diálogo para crear una nueva playlist.
-     */
     fun onDismissCreateDialog() {
         _uiState.update { it.copy(showCreateDialog = false) }
     }
 
-    /**
-     * Llama al repositorio para crear una nueva playlist y recarga la lista si tiene éxito.
-     */
     fun createPlaylist(name: String) {
-        if (name.isBlank()) return // Evita crear playlists sin nombre
+        if (name.isBlank()) return
 
         viewModelScope.launch {
-            // Ocultamos el diálogo y mostramos el indicador de carga
             _uiState.update { it.copy(showCreateDialog = false, isLoading = true) }
 
             val result = repository.createPlaylist(name)
 
             result.onSuccess {
-                // Si la creación fue exitosa, recargamos la lista para ver el nuevo item
                 loadPlaylists()
             }.onFailure { exception ->
                 _uiState.update {
                     it.copy(
                         error = "Error al crear la playlist: ${exception.message}",
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+
+    // --- Lógica de Borrado ---
+    fun onDeletePlaylistClicked(playlist: Playlist) {
+        _uiState.update { it.copy(playlistToDelete = playlist) }
+    }
+
+    fun onDismissDeleteDialog() {
+        _uiState.update { it.copy(playlistToDelete = null) }
+    }
+
+    fun confirmDeletePlaylist() {
+        val playlist = _uiState.value.playlistToDelete ?: return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, playlistToDelete = null) }
+
+            val result = repository.deletePlaylist(playlist.id)
+
+            result.onSuccess {
+                // Si el borrado fue exitoso, recargamos la lista para ver el cambio.
+                loadPlaylists()
+            }.onFailure { exception ->
+                _uiState.update {
+                    it.copy(
+                        error = "Error al borrar la playlist: ${exception.message}",
                         isLoading = false
                     )
                 }

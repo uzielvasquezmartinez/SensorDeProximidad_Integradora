@@ -4,20 +4,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.PauseCircle
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.integradorasensorproximidad.data.model.Song
 import java.util.concurrent.TimeUnit
 
@@ -69,50 +64,66 @@ fun SongInfo(currentSong: Song?) {
 
 /**
  * Muestra el slider de progreso y los tiempos de la canción.
+ * ESTA ES LA FUNCIÓN CORREGIDA.
  */
 @Composable
-fun SongProgress(currentPosition: Long, totalDuration: Long, onSeek: (Long) -> Unit) {
+fun SongProgress(
+    currentPosition: Long,
+    totalDuration: Long,
+    onSeekStart: () -> Unit,
+    onSeekFinished: (Long) -> Unit
+) {
+    // Esta variable guarda la posición del slider SOLO mientras el usuario arrastra.
+    var sliderPosition by remember { mutableStateOf<Float?>(null) }
+
+    // El valor que se muestra es la posición del arrastre, o si no, la de la canción.
+    val displayPosition = sliderPosition ?: currentPosition.toFloat()
+
     Column {
         Slider(
-            value = currentPosition.toFloat(),
-            onValueChange = { onSeek(it.toLong()) },
+            value = displayPosition,
+            onValueChange = {
+                // Cuando el usuario empieza a arrastrar por primera vez
+                if (sliderPosition == null) {
+                    onSeekStart()
+                }
+                sliderPosition = it
+            },
+            onValueChangeFinished = {
+                // Cuando el usuario suelta el dedo
+                sliderPosition?.let { onSeekFinished(it.toLong()) }
+                sliderPosition = null // Reseteamos la posición del arrastre
+            },
             valueRange = 0f..totalDuration.toFloat().coerceAtLeast(0f),
             modifier = Modifier.fillMaxWidth()
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(text = formatDuration(currentPosition), style = MaterialTheme.typography.bodySmall)
+            Text(text = formatDuration(displayPosition.toLong()), style = MaterialTheme.typography.bodySmall)
             Text(text = formatDuration(totalDuration), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 /**
- * Muestra los botones de control del reproductor.
+ * Muestra el botón de control del reproductor, centrado en Play/Pausa.
  */
 @Composable
 fun PlayerControls(
     isPlaying: Boolean,
-    onTogglePlayPause: () -> Unit,
-    onSkipNext: () -> Unit,
-    onSkipPrevious: () -> Unit
+    onTogglePlayPause: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.Center, // Centramos el contenido
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onSkipPrevious) {
-            Icon(Icons.Default.SkipPrevious, contentDescription = "Anterior", modifier = Modifier.size(48.dp))
-        }
-        IconButton(onClick = onTogglePlayPause) {
+        // El único control visible es Play/Pausa, para dar protagonismo al gesto
+        IconButton(onClick = onTogglePlayPause, modifier = Modifier.size(72.dp)) {
             Icon(
-                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                imageVector = if (isPlaying) Icons.Default.PauseCircle else Icons.Default.PlayCircle,
                 contentDescription = "Reproducir/Pausar",
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.fillMaxSize()
             )
-        }
-        IconButton(onClick = onSkipNext) {
-            Icon(Icons.Default.SkipNext, contentDescription = "Siguiente", modifier = Modifier.size(48.dp))
         }
     }
 }
