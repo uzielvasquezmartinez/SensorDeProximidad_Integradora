@@ -6,6 +6,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -105,19 +107,27 @@ fun SongProgress(
 }
 
 /**
- * Muestra el botón de control del reproductor, centrado en Play/Pausa.
+ * Muestra los botones de control del reproductor.
  */
 @Composable
 fun PlayerControls(
     isPlaying: Boolean,
-    onTogglePlayPause: () -> Unit
+    onTogglePlayPause: () -> Unit,
+    onSkipNext: () -> Unit,
+    onSkipPrevious: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center, // Centramos el contenido
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // El único control visible es Play/Pausa, para dar protagonismo al gesto
+        IconButton(onClick = onSkipPrevious, modifier = Modifier.size(56.dp)) {
+            Icon(
+                imageVector = Icons.Default.SkipPrevious,
+                contentDescription = "Anterior",
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         IconButton(onClick = onTogglePlayPause, modifier = Modifier.size(72.dp)) {
             Icon(
                 imageVector = if (isPlaying) Icons.Default.PauseCircle else Icons.Default.PlayCircle,
@@ -125,8 +135,16 @@ fun PlayerControls(
                 modifier = Modifier.fillMaxSize()
             )
         }
+        IconButton(onClick = onSkipNext, modifier = Modifier.size(56.dp)) {
+            Icon(
+                imageVector = Icons.Default.SkipNext,
+                contentDescription = "Siguiente",
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
+
 
 /**
  * Formatea la duración de milisegundos a un formato "mm:ss".
