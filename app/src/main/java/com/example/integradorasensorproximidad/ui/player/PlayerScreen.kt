@@ -58,7 +58,11 @@ fun PlayerScreen(
         permissionLauncher.launch(Manifest.permission.READ_MEDIA_AUDIO)
     }
 
-    ProximitySensor(onGesture = { viewModel.skipNext() })
+    // Conectamos los dos gestos a las acciones del ViewModel
+    ProximitySensor(
+        onFastSwipe = { viewModel.skipNext() },
+        onHover = { viewModel.skipPrevious() }
+    )
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -82,13 +86,15 @@ fun PlayerScreen(
                     SongProgress(
                         currentPosition = uiState.currentPosition,
                         totalDuration = uiState.totalDuration,
-                        onSeekStart = { }, // Dejamos vacío por ahora
-                        onSeekFinished = { position -> viewModel.seekTo(position) } // Arreglo temporal
+                        onSeekStart = { },
+                        onSeekFinished = { position -> viewModel.seekTo(position) }
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     PlayerControls(
                         isPlaying = uiState.isPlaying,
-                        onTogglePlayPause = { viewModel.togglePlayPause() }
+                        onTogglePlayPause = { viewModel.togglePlayPause() },
+                        onSkipNext = { viewModel.skipNext() },
+                        onSkipPrevious = { viewModel.skipPrevious() }
                     )
                 }
 
@@ -173,26 +179,68 @@ private fun AddToPlaylistDialog(
     )
 }
 
+/**
+ * Composable que gestiona el sensor de proximidad y diferencia entre dos gestos:
+ * - Pase Rápido (Wave/Swipe): Para `skipNext`.
+ * - Mantener (Hover): Para `skipPrevious`.
+ */
 @Composable
-private fun ProximitySensor(onGesture: () -> Unit) {
+private fun ProximitySensor(
+    onFastSwipe: () -> Unit,
+    onHover: () -> Unit
+) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     DisposableEffect(Unit) {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
+
+        if (proximitySensor == null) {
+            // Opcional: Manejar el caso de que el dispositivo no tenga sensor de proximidad
+            return@DisposableEffect onDispose {}
+        }
+
+        val hoverThreshold = 1500L // 1.5 segundos para considerar "mantener"
+        val swipeMaxDuration = 1000L // Duración máxima para que se considere "pase rápido"
+
         var isNear = false
-        var lastGestureTime = 0L
+        var gestureStartedTime = 0L
+        var hoverTriggered = false
+        var lastActionTime = 0L
+        val actionCooldown = 1000L // 1 segundo de enfriamiento entre acciones
 
         val sensorListener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent?) {
                 event?.let {
                     val currentValue = it.values[0]
                     val wasNear = isNear
-                    isNear = currentValue == 0f
-                    if (!wasNear && isNear) { /* Gesto iniciado */ } else if (wasNear && !isNear) {
-                        val currentTime = System.currentTimeMillis()
-                        if (currentTime - lastGestureTime > 1000) {
-                            onGesture()
-                            lastGestureTime = currentTime
+                    // El valor 0.0f significa "cerca" en la mayoría de los sensores
+                    isNear = currentValue == 0.0f
+
+                    val currentTime = System.currentTimeMillis()
+
+                    // El gesto comienza cuando la mano se acerca
+                    if (!wasNear && isNear) {
+                        gestureStartedTime = currentTime
+                        hoverTriggered = false
+                    }
+
+                    // El gesto termina cuando la mano se aleja
+                    if (wasNear && !isNear) {
+                        val duration = currentTime - gestureStartedTime
+                        if (!hoverTriggered && duration < swipeMaxDuration && (currentTime - lastActionTime > actionCooldown)) {
+                            onFastSwipe()
+                            lastActionTime = currentTime
+                        }
+                    }
+
+                    // El gesto se mantiene si la mano sigue cerca
+                    if (isNear && !hoverTriggered && (currentTime - gestureStartedTime > hoverThreshold)) {
+                        if (currentTime - lastActionTime > actionCooldown) {
+                            onHover()
+                            hoverTriggered = true // Evita que se dispare múltiples veces
+                            lastActionTime = currentTime
                         }
                     }
                 }
@@ -200,7 +248,7 @@ private fun ProximitySensor(onGesture: () -> Unit) {
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
 
-        sensorManager.registerListener(sensorListener, proximitySensor, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(sensorListener, proximitySensor, SensorManager.SENSOR_DELAY_UI)
 
         onDispose {
             sensorManager.unregisterListener(sensorListener)
