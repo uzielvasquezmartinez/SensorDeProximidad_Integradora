@@ -3,42 +3,56 @@ package com.example.integradorasensorproximidad.data.repository
 import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
+import com.example.integradorasensorproximidad.data.model.NetworkSong
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
+import com.example.integradorasensorproximidad.data.network.ApiService
 import com.example.integradorasensorproximidad.data.network.RetrofitClient
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Repositorio que gestiona la obtención de datos de música, tanto locales como remotos.
  */
 class MusicRepository {
 
+    private val apiService: ApiService = RetrofitClient.apiService
+    // NOTA: En una app de producción, esta URL base se inyectaría, no se codificaría aquí.
+    private val baseUrl = "http://192.168.56.1:5000/"
+
+    // --- MÉTODOS DE RED ---
+
     /**
-     * Obtiene las playlists desde la API remota.
+     * Obtiene la lista de canciones desde el servidor y las mapea al modelo Song unificado.
      */
-    suspend fun getPlaylists(): Result<List<Playlist>> {
+    suspend fun getNetworkSongs(): Result<List<Song>> {
         return try {
-            val response = RetrofitClient.apiService.getAllPlaylists()
-            if (response.isSuccessful) {
-                Result.success(response.body() ?: emptyList())
-            } else {
-                Result.failure(Exception("Error al obtener las playlists: ${response.code()}"))
+            val networkSongs = apiService.getSongs()
+            // Mapea la respuesta de la red (NetworkSong) al modelo de dominio (Song)
+            val songs = networkSongs.map { networkSong ->
+                Song(
+                    id = networkSong.id,
+                    title = networkSong.title,
+                    artist = networkSong.artist,
+                    duration = networkSong.duration,
+                    contentUri = null, // Es una canción de red, no tiene URI local
+                    networkUrl = baseUrl + "api/audio/" + networkSong.filePath
+                )
             }
+            Result.success(songs)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     /**
-     * Obtiene los detalles de una playlist específica desde la API.
+     * Obtiene las playlists desde la API remota.
      */
-    suspend fun getPlaylistById(id: Int): Result<Playlist> {
+    suspend fun getNetworkPlaylists(): Result<List<Playlist>> {
         return try {
-            val response = RetrofitClient.apiService.getPlaylistById(id)
-            if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
-            } else {
-                Result.failure(Exception("Error al obtener la playlist: ${response.code()}"))
-            }
+            val playlists = apiService.getPlaylists()
+            Result.success(playlists)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -47,10 +61,9 @@ class MusicRepository {
     /**
      * Crea una nueva playlist en la API remota.
      */
-    suspend fun createPlaylist(name: String): Result<Playlist> {
+    suspend fun createNetworkPlaylist(playlist: Playlist): Result<Playlist> {
         return try {
-            val newPlaylist = Playlist(id = 0, name = name, songIds = emptyList())
-            val response = RetrofitClient.apiService.createPlaylist(newPlaylist)
+            val response = apiService.createPlaylist(playlist)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
@@ -62,36 +75,46 @@ class MusicRepository {
     }
 
     /**
-     * Actualiza una playlist existente en la API remota.
+     * Sube una canción local al servidor.
      */
-    suspend fun updatePlaylist(playlist: Playlist): Result<Playlist> {
+    suspend fun uploadSong(context: Context, song: Song): Result<Song> {
+        // Una canción debe ser local (tener contentUri) para poder ser subida.
+        val localUri = song.contentUri ?: return Result.failure(Exception("La canción a subir debe ser un archivo local."))
+
         return try {
-            val response = RetrofitClient.apiService.updatePlaylist(playlist.id, playlist)
+            val title = song.title.toRequestBody(MultipartBody.FORM)
+            val artist = song.artist.toRequestBody(MultipartBody.FORM)
+            val duration = song.duration.toString().toRequestBody(MultipartBody.FORM)
+
+            val filePart = context.contentResolver.openInputStream(localUri)?.use { inputStream ->
+                val fileBytes = inputStream.readBytes()
+                val requestFile = fileBytes.toRequestBody(
+                    context.contentResolver.getType(localUri)?.toMediaTypeOrNull()
+                )
+                MultipartBody.Part.createFormData("song_file", song.title, requestFile)
+            } ?: return Result.failure(Exception("No se pudo leer el archivo local para subirlo."))
+
+            val response = apiService.uploadSong(title, artist, duration, filePart)
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val networkSong = response.body()!!
+                // Mapea la respuesta a nuestro modelo de dominio unificado
+                val newSong = Song(
+                    id = networkSong.id,
+                    title = networkSong.title,
+                    artist = networkSong.artist,
+                    duration = networkSong.duration,
+                    networkUrl = baseUrl + "api/audio/" + networkSong.filePath
+                )
+                Result.success(newSong)
             } else {
-                Result.failure(Exception("Error al actualizar la playlist: ${response.code()}"))
+                Result.failure(Exception("Error al subir la canción: ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    /**
-     * Borra una playlist de la API remota.
-     */
-    suspend fun deletePlaylist(id: Int): Result<Unit> {
-        return try {
-            val response = RetrofitClient.apiService.deletePlaylist(id)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Error al borrar la playlist: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    // --- MÉTODO DE DATOS LOCALES ---
 
     /**
      * Escanea el almacenamiento compartido del dispositivo en busca de archivos de audio.
@@ -106,7 +129,6 @@ class MusicRepository {
             MediaStore.Audio.Media.DURATION
         )
 
-        // Consulta solo archivos de música y que duren al menos 30 segundos
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 30000"
 
         context.contentResolver.query(
@@ -131,7 +153,8 @@ class MusicRepository {
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
                 )
 
-                songList.add(Song(id, title, artist, duration, contentUri))
+                // Crea la instancia de Song para una canción local
+                songList.add(Song(id = id, title = title, artist = artist, duration = duration, contentUri = contentUri))
             }
         }
 
