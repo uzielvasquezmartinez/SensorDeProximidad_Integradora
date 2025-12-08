@@ -49,11 +49,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun onPermissionResult(isGranted: Boolean) {
         _uiState.update { it.copy(permissionGranted = isGranted, error = null) }
         if (isGranted) {
-            loadSongs()
+            // Ahora cargamos las canciones de la red por defecto
+            loadNetworkSongs()
         }
     }
 
-    private fun loadSongs() {
+    private fun loadLocalSongs() {
         viewModelScope.launch {
             val songs = repository.getLocalSongs(getApplication())
             _uiState.update { it.copy(songList = songs) }
@@ -63,15 +64,42 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun loadNetworkSongs() {
+        viewModelScope.launch {
+            val result = repository.getNetworkSongs()
+            result.onSuccess {
+                _uiState.update { state -> state.copy(songList = it) }
+                if (it.isNotEmpty() && _uiState.value.currentSong == null) {
+                    prepareSong(it.first())
+                }
+            }.onFailure {
+                _uiState.update { state -> state.copy(error = "Error al cargar canciones de la red: ${it.message}") }
+                // Si falla la red, intentamos cargar las locales como fallback
+                loadLocalSongs()
+            }
+        }
+    }
+
     // --- Lógica de Reproducción ---
     private fun prepareSong(song: Song) {
         _uiState.update { it.copy(currentSong = song, isPlaying = false, currentPosition = 0) }
         mediaPlayer?.release()
         mediaPlayer = MediaPlayer().apply {
-            setDataSource(getApplication(), song.contentUri)
-            prepareAsync()
-            setOnPreparedListener { mp -> _uiState.update { it.copy(totalDuration = mp.duration.toLong()) } }
-            setOnCompletionListener { skipNext() }
+            try {
+                when {
+                    song.networkUrl != null -> setDataSource(song.networkUrl)
+                    song.contentUri != null -> setDataSource(getApplication(), song.contentUri)
+                    else -> {
+                        _uiState.update { it.copy(error = "La canción no tiene una fuente válida (ni red ni local).") }
+                        return
+                    }
+                }
+                prepareAsync()
+                setOnPreparedListener { mp -> _uiState.update { it.copy(totalDuration = mp.duration.toLong()) } }
+                setOnCompletionListener { skipNext() }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error al preparar la canción: ${e.message}") }
+            }
         }
     }
 
@@ -79,14 +107,25 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         mediaPlayer?.release()
         _uiState.update { it.copy(currentSong = song, isPlaying = true, currentPosition = 0) }
         mediaPlayer = MediaPlayer().apply {
-            setDataSource(getApplication(), song.contentUri)
-            prepareAsync()
-            setOnPreparedListener { mp ->
-                _uiState.update { it.copy(totalDuration = mp.duration.toLong()) }
-                mp.start()
-                startProgressUpdates()
+            try {
+                when {
+                    song.networkUrl != null -> setDataSource(song.networkUrl)
+                    song.contentUri != null -> setDataSource(getApplication(), song.contentUri)
+                    else -> {
+                        _uiState.update { it.copy(error = "La canción no tiene una fuente válida.") }
+                        return
+                    }
+                }
+                prepareAsync()
+                setOnPreparedListener { mp ->
+                    _uiState.update { it.copy(totalDuration = mp.duration.toLong()) }
+                    mp.start()
+                    startProgressUpdates()
+                }
+                setOnCompletionListener { skipNext() }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error al reproducir la canción: ${e.message}") }
             }
-            setOnCompletionListener { skipNext() }
         }
     }
 
@@ -125,32 +164,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(currentPosition = position) }
     }
 
-    // --- Lógica de "Añadir a Playlist" ---
+    // --- Lógica de "Añadir a Playlist" (necesitará adaptación a la red en el futuro) ---
 
-    /**
-     * Se llama al pulsar el botón '+' en una canción.
-     * Carga las playlists y prepara el diálogo.
-     */
     fun onAddSongClicked(song: Song) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(songToAddToPlaylist = song, error = null) }
-            val result = repository.getPlaylists()
-            result.onSuccess { playlists ->
-                _uiState.update {
-                    it.copy(
-                        availablePlaylists = playlists,
-                        showAddToPlaylistDialog = true
-                    )
-                }
-            }.onFailure {
-                _uiState.update { it.copy(error = "No se pudieron cargar las playlists.") }
-            }
-        }
+        // Esta lógica necesitará ser adaptada para funcionar con la red
+        _uiState.update { it.copy(songToAddToPlaylist = song, error = null, showAddToPlaylistDialog = true) }
     }
 
-    /**
-     * Cierra el diálogo de "Añadir a playlist".
-     */
     fun onDismissAddToPlaylistDialog() {
         _uiState.update {
             it.copy(
@@ -161,30 +181,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /**
-     * Añade la canción seleccionada a la playlist elegida.
-     */
     fun addSongToPlaylist(playlist: Playlist) {
-        val songToAdd = _uiState.value.songToAddToPlaylist ?: return
-
-        if (playlist.songIds.contains(songToAdd.id)) {
-            onDismissAddToPlaylistDialog()
-            return
-        }
-
-        val updatedSongIds = playlist.songIds + songToAdd.id
-        val updatedPlaylist = playlist.copy(songIds = updatedSongIds)
-
-        viewModelScope.launch {
-            val result = repository.updatePlaylist(updatedPlaylist)
-            result.onFailure {
-                _uiState.update { state ->
-                    state.copy(error = "Error al añadir la canción: ${it.message}")
-                }
-            }
-            // Siempre cerramos el diálogo, independientemente del resultado
-            onDismissAddToPlaylistDialog()
-        }
+        // Lógica de añadir a playlist también necesitará adaptarse a la red
+        onDismissAddToPlaylistDialog()
     }
 
     // --- Gestión del ciclo de vida ---
@@ -193,7 +192,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         progressUpdateJob?.cancel()
         progressUpdateJob = viewModelScope.launch {
             while (mediaPlayer?.isPlaying == true) {
-                _uiState.update { it.copy(currentPosition = mediaPlayer?.currentPosition?.toLong() ?: 0) }
+                try {
+                    _uiState.update { it.copy(currentPosition = mediaPlayer?.currentPosition?.toLong() ?: 0) }
+                } catch (e: IllegalStateException) {
+                    // MediaPlayer fue liberado, detenemos las actualizaciones
+                    break
+                }
                 delay(1000)
             }
         }
