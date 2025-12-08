@@ -49,7 +49,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun onPermissionResult(isGranted: Boolean) {
         _uiState.update { it.copy(permissionGranted = isGranted, error = null) }
         if (isGranted) {
-            // Ahora cargamos las canciones de la red por defecto
             loadNetworkSongs()
         }
     }
@@ -74,7 +73,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }.onFailure {
                 _uiState.update { state -> state.copy(error = "Error al cargar canciones de la red: ${it.message}") }
-                // Si falla la red, intentamos cargar las locales como fallback
                 loadLocalSongs()
             }
         }
@@ -164,11 +162,23 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(currentPosition = position) }
     }
 
-    // --- Lógica de "Añadir a Playlist" (necesitará adaptación a la red en el futuro) ---
+    // --- Lógica de "Añadir a Playlist" ---
 
     fun onAddSongClicked(song: Song) {
-        // Esta lógica necesitará ser adaptada para funcionar con la red
-        _uiState.update { it.copy(songToAddToPlaylist = song, error = null, showAddToPlaylistDialog = true) }
+        viewModelScope.launch {
+            _uiState.update { it.copy(songToAddToPlaylist = song, error = null) }
+            val result = repository.getNetworkPlaylists()
+            result.onSuccess { playlists ->
+                _uiState.update {
+                    it.copy(
+                        availablePlaylists = playlists,
+                        showAddToPlaylistDialog = true
+                    )
+                }
+            }.onFailure {
+                _uiState.update { it.copy(error = "No se pudieron cargar las playlists.") }
+            }
+        }
     }
 
     fun onDismissAddToPlaylistDialog() {
@@ -182,8 +192,26 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun addSongToPlaylist(playlist: Playlist) {
-        // Lógica de añadir a playlist también necesitará adaptarse a la red
-        onDismissAddToPlaylistDialog()
+        val songToAdd = _uiState.value.songToAddToPlaylist ?: return
+
+        if (playlist.songIds.contains(songToAdd.id)) {
+            _uiState.update { it.copy(error = "La canción ya está en esta playlist.") }
+            onDismissAddToPlaylistDialog()
+            return
+        }
+
+        val updatedSongIds = playlist.songIds + songToAdd.id
+        val updatedPlaylist = playlist.copy(songIds = updatedSongIds)
+
+        viewModelScope.launch {
+            val result = repository.updateNetworkPlaylist(updatedPlaylist)
+            result.onFailure { exception ->
+                _uiState.update { state ->
+                    state.copy(error = "Error al añadir la canción: ${exception.message}")
+                }
+            }
+            onDismissAddToPlaylistDialog()
+        }
     }
 
     // --- Gestión del ciclo de vida ---
@@ -195,7 +223,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 try {
                     _uiState.update { it.copy(currentPosition = mediaPlayer?.currentPosition?.toLong() ?: 0) }
                 } catch (e: IllegalStateException) {
-                    // MediaPlayer fue liberado, detenemos las actualizaciones
                     break
                 }
                 delay(1000)
