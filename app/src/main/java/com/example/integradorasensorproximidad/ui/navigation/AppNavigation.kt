@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -18,6 +19,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.integradorasensorproximidad.ui.player.PlayerScreen
+import com.example.integradorasensorproximidad.ui.player.PlayerViewModel
 import com.example.integradorasensorproximidad.ui.playlists.PlaylistDetailScreen
 import com.example.integradorasensorproximidad.ui.playlists.PlaylistsScreen
 
@@ -26,15 +28,16 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val screens = listOf(AppScreen.Player, AppScreen.Playlists)
 
+    // Creamos el ViewModel aquí para que sea compartido por todas las pantallas que lo necesiten.
+    val playerViewModel: PlayerViewModel = viewModel()
+
     Scaffold(
         bottomBar = {
-            // Solo mostramos la barra de navegación en las pantallas principales
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
             if (screens.any { it.route == currentRoute }) {
                 NavigationBar {
                     val currentDestination = navBackStackEntry?.destination
-
                     screens.forEach { screen ->
                         NavigationBarItem(
                             icon = { Icon(screen.icon!!, contentDescription = null) },
@@ -58,7 +61,10 @@ fun AppNavigation() {
             startDestination = AppScreen.Player.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(AppScreen.Player.route) { PlayerScreen() }
+            composable(AppScreen.Player.route) {
+                // Pasamos el ViewModel compartido a la pantalla del reproductor.
+                PlayerScreen(viewModel = playerViewModel)
+            }
             composable(AppScreen.Playlists.route) {
                 PlaylistsScreen(
                     onPlaylistClick = { playlistId ->
@@ -70,9 +76,16 @@ fun AppNavigation() {
                 route = AppScreen.PlaylistDetail.route,
                 arguments = listOf(navArgument(PLAYLIST_ID_ARG) { type = NavType.IntType })
             ) { backStackEntry ->
-                // FIX: Ya no necesitamos pasar el ID, el ViewModel lo obtiene automáticamente.
                 PlaylistDetailScreen(
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onSongSelected = { song ->
+                        // 1. Usamos el ViewModel compartido para reproducir la canción.
+                        playerViewModel.playSong(song)
+                        // 2. Navegamos de vuelta a la pantalla del reproductor.
+                        navController.navigate(AppScreen.Player.route) {
+                            popUpTo(navController.graph.findStartDestination().id)
+                        }
+                    }
                 )
             }
         }

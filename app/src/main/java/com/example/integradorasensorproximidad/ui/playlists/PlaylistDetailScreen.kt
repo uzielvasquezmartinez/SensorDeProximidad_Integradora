@@ -1,5 +1,6 @@
 package com.example.integradorasensorproximidad.ui.playlists
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,13 +20,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.integradorasensorproximidad.data.model.Song
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistDetailScreen(
-    // Ya no necesitamos recibir el ID aquí, el ViewModel lo gestionará
     onNavigateBack: () -> Unit,
-    viewModel: PlaylistDetailViewModel = viewModel() // Obtenemos la instancia del ViewModel
+    onSongSelected: (Song) -> Unit, // Parámetro para notificar la selección de una canción
+    viewModel: PlaylistDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -68,12 +70,18 @@ fun PlaylistDetailScreen(
                 else -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(uiState.songs) { song ->
-                            Text(
-                                text = "${song.title} - ${song.artist}",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp, horizontal = 16.dp)
-                            )
+                            Column(
+                                modifier = Modifier.clickable { onSongSelected(song) } // Hacemos el elemento pulsable
+                            ) {
+                                Text(
+                                    text = "${song.title} - ${song.artist}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp, horizontal = 16.dp)
+                                )
+                                Divider() // Separador visual
+                            }
                         }
                     }
                 }

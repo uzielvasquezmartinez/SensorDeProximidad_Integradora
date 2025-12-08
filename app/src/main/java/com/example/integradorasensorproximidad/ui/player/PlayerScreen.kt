@@ -26,13 +26,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.integradorasensorproximidad.data.model.Playlist
 
 @Composable
 fun PlayerScreen(
     modifier: Modifier = Modifier,
-    viewModel: PlayerViewModel = viewModel()
+    viewModel: PlayerViewModel // ELIMINADO: = viewModel(). AHORA LO RECIBIMOS COMO PARÁMETRO
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
