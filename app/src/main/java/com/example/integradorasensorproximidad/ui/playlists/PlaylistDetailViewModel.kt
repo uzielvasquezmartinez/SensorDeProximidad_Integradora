@@ -47,29 +47,44 @@ class PlaylistDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            // 1. Obtener los detalles de la playlist desde la API
-            val playlistResult = repository.getPlaylistById(playlistId)
+            // 1. Obtener TODAS las playlists desde la API
+            val allPlaylistsResult = repository.getNetworkPlaylists()
 
-            playlistResult.onSuccess { playlist ->
-                // 2. Obtener TODAS las canciones locales
-                val allLocalSongs = repository.getLocalSongs(getApplication())
+            allPlaylistsResult.onSuccess { allPlaylists ->
+                // 2. Encontrar la playlist específica en la lista
+                val playlist = allPlaylists.find { it.id == playlistId }
 
-                // 3. Filtrar las canciones locales para quedarnos solo con las de la playlist
-                val songsInPlaylist = allLocalSongs.filter { song ->
-                    playlist.songIds.contains(song.id)
+                if (playlist != null) {
+                    // 3. Obtener TODAS las canciones locales
+                    // En el futuro, esto podría obtener canciones de red si la playlist las soporta
+                    val allLocalSongs = repository.getLocalSongs(getApplication())
+
+                    // 4. Filtrar las canciones locales para quedarnos solo con las de la playlist
+                    val songsInPlaylist = allLocalSongs.filter { song ->
+                        playlist.songIds.contains(song.id)
+                    }
+
+                    _uiState.update {
+                        it.copy(
+                            playlist = playlist,
+                            songs = songsInPlaylist,
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    // No se encontró la playlist con el ID especificado
+                    _uiState.update {
+                        it.copy(
+                            error = "No se encontró la playlist con ID $playlistId.",
+                            isLoading = false
+                        )
+                    }
                 }
-
+            }.onFailure { exception ->
+                // Error al contactar a la red
                 _uiState.update {
                     it.copy(
-                        playlist = playlist,
-                        songs = songsInPlaylist,
-                        isLoading = false
-                    )
-                }
-            }.onFailure {
-                _uiState.update {
-                    it.copy(
-                        error = "No se pudieron cargar los detalles de la playlist.",
+                        error = "Error al cargar playlists: ${exception.message}",
                         isLoading = false
                     )
                 }

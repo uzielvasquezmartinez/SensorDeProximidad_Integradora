@@ -39,7 +39,8 @@ class PlaylistsViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            val result = repository.getPlaylists()
+            // CORREGIDO: Llamada a la función correcta en el repositorio
+            val result = repository.getNetworkPlaylists()
 
             result.onSuccess { playlists ->
                 _uiState.update {
@@ -74,7 +75,9 @@ class PlaylistsViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(showCreateDialog = false, isLoading = true) }
 
-            val result = repository.createPlaylist(name)
+            val newPlaylist = Playlist(id = 0, name = name, songIds = emptyList())
+            // CORREGIDO: Llamada a la función correcta en el repositorio
+            val result = repository.createNetworkPlaylist(newPlaylist)
 
             result.onSuccess {
                 loadPlaylists()
@@ -104,10 +107,15 @@ class PlaylistsViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, playlistToDelete = null) }
 
-            val result = repository.deletePlaylist(playlist.id)
+            // NOTA: La función `deleteNetworkPlaylist` no existe aún en el repositorio.
+            // La crearemos en el siguiente paso para conectarla con tu nueva API.
+            // Por ahora, recargamos la lista para simular el borrado.
+            loadPlaylists()
+
+            /* Este será el código cuando implementemos el borrado en el repositorio:
+            val result = repository.deleteNetworkPlaylist(playlist.id)
 
             result.onSuccess {
-                // Si el borrado fue exitoso, recargamos la lista para ver el cambio.
                 loadPlaylists()
             }.onFailure { exception ->
                 _uiState.update {
@@ -117,6 +125,7 @@ class PlaylistsViewModel : ViewModel() {
                     )
                 }
             }
+            */
         }
     }
 }
