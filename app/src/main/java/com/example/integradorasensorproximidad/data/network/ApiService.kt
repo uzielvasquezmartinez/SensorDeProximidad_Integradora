@@ -4,10 +4,12 @@ import com.example.integradorasensorproximidad.data.model.NetworkSong
 import com.example.integradorasensorproximidad.data.model.Playlist
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
 
 interface ApiService {
+
     // --- Canciones ---
 
     @GET("api/songs")
@@ -29,15 +31,13 @@ interface ApiService {
 
     @POST("api/playlists")
     suspend fun createPlaylist(@Body playlistData: Playlist): Response<Playlist>
+
     @PUT("api/playlists/{id}")
     suspend fun updatePlaylist(
-        @Path("id") id: Int,
+        @Path("id") playlistId: Int,
         @Body playlistData: Playlist
     ): Response<Playlist>
 
     @DELETE("api/playlists/{id}")
-    suspend fun deletePlaylist(
-        @Path("id") id: Int
-    ): Response<Unit>
-
+    suspend fun deletePlaylist(@Path("id") playlistId: Int): Response<ResponseBody>
 }
