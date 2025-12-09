@@ -16,7 +16,6 @@
     <application
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
-
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -34,6 +33,11 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- CORRECCIÓN: La etiqueta de atribución se mueve aquí dentro -->
+            <property
+                android:name="android.app.PROPERTY_ATTRIBUTION_TAGS"
+                android:value="player.features" />
         </activity>
     </application>
 
