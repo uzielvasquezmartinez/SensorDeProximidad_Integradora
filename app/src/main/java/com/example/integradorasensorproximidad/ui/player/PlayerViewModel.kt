@@ -1,6 +1,11 @@
 package com.example.integradorasensorproximidad.ui.player
 
 import android.app.Application
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.MediaPlayer
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,21 +31,35 @@ data class PlayerUiState(
     val totalDuration: Long = 0,
     val permissionGranted: Boolean = false,
     val error: String? = null,
-
-    // Estado para el diálogo de "Añadir a Playlist"
     val songToAddToPlaylist: Song? = null,
     val showAddToPlaylistDialog: Boolean = false,
-    val availablePlaylists: List<Playlist> = emptyList()
+    val availablePlaylists: List<Playlist> = emptyList(),
+    val isProximitySensorEnabled: Boolean = false
 )
 
 /**
  * ViewModel para la pantalla del reproductor de música.
  */
-class PlayerViewModel(application: Application) : AndroidViewModel(application) {
+class PlayerViewModel(application: Application) : AndroidViewModel(application), SensorEventListener {
 
     private val repository = MusicRepository()
     private var mediaPlayer: MediaPlayer? = null
     private var progressUpdateJob: Job? = null
+
+    // --- Propiedades para el Sensor de Proximidad ---
+    private val sensorManager: SensorManager = application.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val proximitySensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
+
+    // Máquina de estados para gestionar los gestos del sensor
+    private sealed class ProximityState {
+        object Far : ProximityState()
+        data class Near(val startTime: Long, val longPressTriggered: Boolean, val wasPlaying: Boolean) : ProximityState()
+    }
+    private var sensorState: ProximityState = ProximityState.Far
+    private var waveCount = 0
+    private var waveHandlerJob: Job? = null
+    private val LONG_PRESS_THRESHOLD_MS = 500L
+    private val WAVE_RESET_TIMEOUT_MS = 700L
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -162,6 +181,75 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(currentPosition = position) }
     }
 
+    // --- Lógica del Sensor de Proximidad ---
+
+    fun enableProximitySensor(enable: Boolean) {
+        if (proximitySensor == null) {
+            _uiState.update { it.copy(error = "Sensor de proximidad no disponible en este dispositivo.") }
+            return
+        }
+
+        if (enable) {
+            sensorManager.registerListener(this, proximitySensor, SensorManager.SENSOR_DELAY_NORMAL)
+        } else {
+            sensorManager.unregisterListener(this)
+        }
+        _uiState.update { it.copy(isProximitySensorEnabled = enable) }
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event?.sensor?.type != Sensor.TYPE_PROXIMITY) return
+
+        val isCurrentlyNear = event.values[0] < (proximitySensor?.maximumRange ?: 5.0f)
+        val previousState = sensorState
+
+        if (isCurrentlyNear && previousState is ProximityState.Far) {
+            // Estado: Lejos -> Cerca
+            val now = System.currentTimeMillis()
+            sensorState = ProximityState.Near(startTime = now, longPressTriggered = false, wasPlaying = _uiState.value.isPlaying)
+            viewModelScope.launch {
+                delay(LONG_PRESS_THRESHOLD_MS)
+                // Comprueba si seguimos en el mismo estado "Cerca" tras el retardo
+                val stateAfterDelay = sensorState
+                if (stateAfterDelay is ProximityState.Near && stateAfterDelay.startTime == now) {
+                    // Es un gesto largo
+                    if (stateAfterDelay.wasPlaying) {
+                        togglePlayPause() // Pausa la música
+                    }
+                    sensorState = stateAfterDelay.copy(longPressTriggered = true)
+                }
+            }
+        } else if (!isCurrentlyNear && previousState is ProximityState.Near) {
+            // Estado: Cerca -> Lejos
+            sensorState = ProximityState.Far
+
+            if (previousState.longPressTriggered) {
+                // Si se activó el gesto largo, reanudamos la música
+                if (previousState.wasPlaying) {
+                    togglePlayPause() // Reanuda la música
+                }
+            } else {
+                // Si fue un gesto corto (un "wave")
+                waveCount++
+                waveHandlerJob?.cancel()
+                waveHandlerJob = viewModelScope.launch {
+                    delay(WAVE_RESET_TIMEOUT_MS)
+                    if (waveCount == 1) {
+                        skipNext()
+                    } else if (waveCount >= 2) {
+                        skipPrevious()
+                    }
+                    waveCount = 0 // Reinicia el contador tras la acción
+                }
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        // No es necesario para este caso de uso.
+    }
+
+
     // --- Lógica de "Añadir a Playlist" ---
 
     fun onAddSongClicked(song: Song) {
@@ -197,19 +285,14 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val songIdToAdd: Long
 
-            // Paso 1: Diferenciar entre canción local y de red
             val isLocalSong = songToAdd.contentUri != null && songToAdd.networkUrl == null
 
             if (isLocalSong) {
-                // Es una canción local, necesita ser subida primero.
                 _uiState.update { it.copy(error = "Subiendo canción al servidor...") }
                 val uploadResult = repository.uploadSong(getApplication(), songToAdd)
-
-                // Usamos getOrNull para obtener el ID de forma segura. Si falla, es null.
                 val uploadedSongId = uploadResult.getOrNull()?.id
 
                 if (uploadedSongId == null) {
-                    // La subida falló. Mostramos el error y detenemos el proceso.
                     uploadResult.onFailure { exception ->
                         _uiState.update { it.copy(error = "Error al subir la canción: ${exception.message}") }
                     }
@@ -218,11 +301,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 songIdToAdd = uploadedSongId
             } else {
-                // Es una canción de red, usamos su ID directamente.
                 songIdToAdd = songToAdd.id
             }
 
-            // Paso 2: Con un ID de red válido, actualizar la playlist.
             if (playlist.songIds.contains(songIdToAdd)) {
                 _uiState.update { it.copy(error = "La canción ya está en esta playlist.") }
                 onDismissAddToPlaylistDialog()
@@ -239,7 +320,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     state.copy(error = "Error al actualizar la playlist: ${exception.message}")
                 }
             }
-
             onDismissAddToPlaylistDialog()
         }
     }
@@ -267,6 +347,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     override fun onCleared() {
         mediaPlayer?.release()
         stopProgressUpdates()
+        sensorManager.unregisterListener(this)
         super.onCleared()
     }
 }
