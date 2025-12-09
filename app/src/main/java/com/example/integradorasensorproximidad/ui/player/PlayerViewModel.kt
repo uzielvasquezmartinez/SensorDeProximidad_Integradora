@@ -194,22 +194,52 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun addSongToPlaylist(playlist: Playlist) {
         val songToAdd = _uiState.value.songToAddToPlaylist ?: return
 
-        if (playlist.songIds.contains(songToAdd.id)) {
-            _uiState.update { it.copy(error = "La canción ya está en esta playlist.") }
-            onDismissAddToPlaylistDialog()
-            return
-        }
-
-        val updatedSongIds = playlist.songIds + songToAdd.id
-        val updatedPlaylist = playlist.copy(songIds = updatedSongIds)
-
         viewModelScope.launch {
+            val songIdToAdd: Long
+
+            // Paso 1: Diferenciar entre canción local y de red
+            val isLocalSong = songToAdd.contentUri != null && songToAdd.networkUrl == null
+
+            if (isLocalSong) {
+                // Es una canción local, necesita ser subida primero.
+                _uiState.update { it.copy(error = "Subiendo canción al servidor...") }
+                val uploadResult = repository.uploadSong(getApplication(), songToAdd)
+
+                // Usamos getOrNull para obtener el ID de forma segura. Si falla, es null.
+                val uploadedSongId = uploadResult.getOrNull()?.id
+
+                if (uploadedSongId == null) {
+                    // La subida falló. Mostramos el error y detenemos el proceso.
+                    uploadResult.onFailure { exception ->
+                        _uiState.update { it.copy(error = "Error al subir la canción: ${exception.message}") }
+                    }
+                    onDismissAddToPlaylistDialog()
+                    return@launch
+                }
+                songIdToAdd = uploadedSongId
+            } else {
+                // Es una canción de red, usamos su ID directamente.
+                songIdToAdd = songToAdd.id
+            }
+
+            // Paso 2: Con un ID de red válido, actualizar la playlist.
+            if (playlist.songIds.contains(songIdToAdd)) {
+                _uiState.update { it.copy(error = "La canción ya está en esta playlist.") }
+                onDismissAddToPlaylistDialog()
+                return@launch
+            }
+
+            val updatedSongIds = playlist.songIds + songIdToAdd
+            val updatedPlaylist = playlist.copy(songIds = updatedSongIds)
+
             val result = repository.updateNetworkPlaylist(updatedPlaylist)
+
             result.onFailure { exception ->
                 _uiState.update { state ->
-                    state.copy(error = "Error al añadir la canción: ${exception.message}")
+                    state.copy(error = "Error al actualizar la playlist: ${exception.message}")
                 }
             }
+
             onDismissAddToPlaylistDialog()
         }
     }
