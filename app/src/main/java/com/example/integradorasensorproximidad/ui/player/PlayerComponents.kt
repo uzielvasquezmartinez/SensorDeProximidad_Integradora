@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
@@ -66,7 +67,6 @@ fun SongInfo(currentSong: Song?) {
 
 /**
  * Muestra el slider de progreso y los tiempos de la canción.
- * ESTA ES LA FUNCIÓN CORREGIDA.
  */
 @Composable
 fun SongProgress(
@@ -75,26 +75,19 @@ fun SongProgress(
     onSeekStart: () -> Unit,
     onSeekFinished: (Long) -> Unit
 ) {
-    // Esta variable guarda la posición del slider SOLO mientras el usuario arrastra.
     var sliderPosition by remember { mutableStateOf<Float?>(null) }
-
-    // El valor que se muestra es la posición del arrastre, o si no, la de la canción.
     val displayPosition = sliderPosition ?: currentPosition.toFloat()
 
     Column {
         Slider(
             value = displayPosition,
             onValueChange = {
-                // Cuando el usuario empieza a arrastrar por primera vez
-                if (sliderPosition == null) {
-                    onSeekStart()
-                }
+                if (sliderPosition == null) onSeekStart()
                 sliderPosition = it
             },
             onValueChangeFinished = {
-                // Cuando el usuario suelta el dedo
                 sliderPosition?.let { onSeekFinished(it.toLong()) }
-                sliderPosition = null // Reseteamos la posición del arrastre
+                sliderPosition = null
             },
             valueRange = 0f..totalDuration.toFloat().coerceAtLeast(0f),
             modifier = Modifier.fillMaxWidth()
@@ -142,6 +135,34 @@ fun PlayerControls(
                 modifier = Modifier.fillMaxSize()
             )
         }
+    }
+}
+
+/**
+ * Componente para activar/desactivar el control por gestos del sensor.
+ */
+@Composable
+fun ProximitySensorControl(
+    isSensorEnabled: Boolean,
+    onToggleSensor: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(imageVector = Icons.Default.Sensors, contentDescription = "Sensor Icon")
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Control por Gestos")
+        }
+        Switch(
+            checked = isSensorEnabled,
+            onCheckedChange = onToggleSensor
+        )
     }
 }
 
