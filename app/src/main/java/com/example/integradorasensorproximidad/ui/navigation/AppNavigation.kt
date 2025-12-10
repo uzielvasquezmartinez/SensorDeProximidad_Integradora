@@ -19,7 +19,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.integradorasensorproximidad.ui.player.PlayerScreen
-import com.example.integradorasensorproximidad.ui.player.PlayerViewModel
+import com.example.integradorasensorproximidad.ui.viewmodel.PlayerViewModel
 import com.example.integradorasensorproximidad.ui.playlists.PlaylistDetailScreen
 import com.example.integradorasensorproximidad.ui.playlists.PlaylistsScreen
 
