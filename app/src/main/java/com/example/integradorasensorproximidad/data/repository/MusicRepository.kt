@@ -17,7 +17,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class MusicRepository {
 
     private val apiService: ApiService = RetrofitClient.apiService
-    private val baseUrl = "http://192.168.56.1:5000/"
+    // CORRECCIÓN: Obtenemos la URL base directamente del cliente de Retrofit para evitar inconsistencias.
+    private val baseUrl = RetrofitClient.BASE_URL
 
     // --- MÉTODOS DE RED PARA PLAYLISTS ---
 
@@ -81,7 +82,8 @@ class MusicRepository {
                     artist = networkSong.artist,
                     duration = networkSong.duration,
                     contentUri = null,
-                    networkUrl = baseUrl + "api/audio/" + networkSong.filePath
+                    // La URL se construye correctamente usando la baseUrl centralizada
+                    networkUrl = "${baseUrl}api/audio/${networkSong.filePath}"
                 )
             }
             Result.success(songs)
@@ -103,7 +105,8 @@ class MusicRepository {
                 val requestFile = fileBytes.toRequestBody(
                     context.contentResolver.getType(localUri)?.toMediaTypeOrNull()
                 )
-                MultipartBody.Part.createFormData("song_file", song.title, requestFile)
+                // CORRECCIÓN: El nombre del campo debe ser "file" para coincidir con la API de Python.
+                MultipartBody.Part.createFormData("file", song.title, requestFile)
             } ?: return Result.failure(Exception("No se pudo leer el archivo local para subirlo."))
 
             val response = apiService.uploadSong(title, artist, duration, filePart)
@@ -114,11 +117,11 @@ class MusicRepository {
                     title = networkSong.title,
                     artist = networkSong.artist,
                     duration = networkSong.duration,
-                    networkUrl = baseUrl + "api/audio/" + networkSong.filePath
+                    networkUrl = "${baseUrl}api/audio/${networkSong.filePath}"
                 )
                 Result.success(newSong)
             } else {
-                Result.failure(Exception("Error al subir la canción: ${response.message()}"))
+                Result.failure(Exception("Error al subir la canción (Code: ${response.code()}): ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
