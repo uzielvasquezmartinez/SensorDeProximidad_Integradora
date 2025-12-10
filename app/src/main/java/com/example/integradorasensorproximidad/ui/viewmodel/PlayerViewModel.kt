@@ -1,17 +1,13 @@
-package com.example.integradorasensorproximidad.ui.player
+package com.example.integradorasensorproximidad.ui.viewmodel
 
 import android.app.Application
-import android.content.Context
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.media.MediaPlayer
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
 import com.example.integradorasensorproximidad.data.repository.MusicRepository
+import com.example.integradorasensorproximidad.util.ProximitySensorHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +26,7 @@ data class PlayerUiState(
     val currentPosition: Long = 0,
     val totalDuration: Long = 0,
     val permissionGranted: Boolean = false,
+    val isLoading: Boolean = false,
     val error: String? = null,
     val songToAddToPlaylist: Song? = null,
     val showAddToPlaylistDialog: Boolean = false,
@@ -40,66 +37,71 @@ data class PlayerUiState(
 /**
  * ViewModel para la pantalla del reproductor de música.
  */
-class PlayerViewModel(application: Application) : AndroidViewModel(application), SensorEventListener {
+class PlayerViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = MusicRepository()
     private var mediaPlayer: MediaPlayer? = null
     private var progressUpdateJob: Job? = null
 
-    // --- Propiedades para el Sensor de Proximidad ---
-    private val sensorManager: SensorManager = application.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val proximitySensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
-
-    // Máquina de estados para gestionar los gestos del sensor
-    private sealed class ProximityState {
-        object Far : ProximityState()
-        data class Near(val startTime: Long, val longPressTriggered: Boolean, val wasPlaying: Boolean) : ProximityState()
-    }
-    private var sensorState: ProximityState = ProximityState.Far
-    private var waveCount = 0
-    private var waveHandlerJob: Job? = null
-    private val LONG_PRESS_THRESHOLD_MS = 500L
-    private val WAVE_RESET_TIMEOUT_MS = 700L
-
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    private val sensorHelper = ProximitySensorHelper(
+        context = getApplication(),
+        coroutineScope = viewModelScope,
+        isPlayingProvider = { _uiState.value.isPlaying },
+        onTogglePlayPause = ::togglePlayPause,
+        onSkipNext = ::skipNext,
+        onSkipPrevious = ::skipPrevious
+    )
 
     // --- Lógica de Permisos y Carga de Canciones ---
     fun onPermissionResult(isGranted: Boolean) {
         _uiState.update { it.copy(permissionGranted = isGranted, error = null) }
         if (isGranted) {
-            loadNetworkSongs()
+            loadAllSongs()
         }
     }
 
-    private fun loadLocalSongs() {
+    private fun loadAllSongs() {
         viewModelScope.launch {
-            val songs = repository.getLocalSongs(getApplication())
-            _uiState.update { it.copy(songList = songs) }
-            if (songs.isNotEmpty() && _uiState.value.currentSong == null) {
-                prepareSong(songs.first())
-            }
-        }
-    }
+            _uiState.update { it.copy(isLoading = true) }
 
-    private fun loadNetworkSongs() {
-        viewModelScope.launch {
-            val result = repository.getNetworkSongs()
-            result.onSuccess {
-                _uiState.update { state -> state.copy(songList = it) }
-                if (it.isNotEmpty() && _uiState.value.currentSong == null) {
-                    prepareSong(it.first())
+            val networkResult = repository.getNetworkSongs()
+            val localSongs = repository.getLocalSongs(getApplication())
+
+            networkResult.onSuccess { networkSongs ->
+                val combinedList = (networkSongs + localSongs).distinctBy { it.title to it.artist }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        songList = combinedList,
+                        error = null
+                    )
                 }
-            }.onFailure {
-                _uiState.update { state -> state.copy(error = "Error al cargar canciones de la red: ${it.message}") }
-                loadLocalSongs()
+                if (combinedList.isNotEmpty() && _uiState.value.currentSong == null) {
+                    prepareSong(combinedList.first())
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        songList = localSongs,
+                        error = "Error de red. Mostrando solo canciones locales."
+                    )
+                }
+                if (localSongs.isNotEmpty() && _uiState.value.currentSong == null) {
+                    prepareSong(localSongs.first())
+                }
             }
         }
     }
+
 
     // --- Lógica de Reproducción ---
     private fun prepareSong(song: Song) {
-        _uiState.update { it.copy(currentSong = song, isPlaying = false, currentPosition = 0) }
+        // Actualizamos el estado para reflejar la nueva canción, pero aún no está sonando.
+        _uiState.update { it.copy(currentSong = song, isPlaying = false, currentPosition = 0, totalDuration = 0) }
         mediaPlayer?.release()
         mediaPlayer = MediaPlayer().apply {
             try {
@@ -111,8 +113,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application),
                         return
                     }
                 }
+                // Preparamos el reproductor de forma asíncrona
                 prepareAsync()
-                setOnPreparedListener { mp -> _uiState.update { it.copy(totalDuration = mp.duration.toLong()) } }
+                // Cuando esté listo, actualizamos la duración total
+                setOnPreparedListener { mp -> 
+                    _uiState.update { it.copy(totalDuration = mp.duration.toLong()) } 
+                }
                 setOnCompletionListener { skipNext() }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error al preparar la canción: ${e.message}") }
@@ -120,9 +126,16 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
+    // ¡FUNCIÓN CORREGIDA!
     fun playSong(song: Song) {
+        // Detenemos cualquier actualización de progreso anterior
+        stopProgressUpdates()
+        // Liberamos el reproductor anterior para evitar solapamientos
         mediaPlayer?.release()
-        _uiState.update { it.copy(currentSong = song, isPlaying = true, currentPosition = 0) }
+
+        // Actualizamos la UI inmediatamente para que el usuario vea la selección
+        _uiState.update { it.copy(currentSong = song, isPlaying = true, currentPosition = 0, totalDuration = 0) }
+
         mediaPlayer = MediaPlayer().apply {
             try {
                 when {
@@ -133,15 +146,19 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application),
                         return
                     }
                 }
-                prepareAsync()
+                // El punto clave: la reproducción SÓLO comienza cuando el reproductor está listo.
                 setOnPreparedListener { mp ->
                     _uiState.update { it.copy(totalDuration = mp.duration.toLong()) }
-                    mp.start()
-                    startProgressUpdates()
+                    mp.start() // <-- INICIAR REPRODUCCIÓN AQUÍ
+                    startProgressUpdates() // Empezar a actualizar la barra de progreso
                 }
+                // Preparamos el reproductor. El listener anterior se encargará de iniciarlo.
+                prepareAsync()
+
                 setOnCompletionListener { skipNext() }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error al reproducir la canción: ${e.message}") }
+                _uiState.update { it.copy(isPlaying = false) } // Aseguramos que el estado de reproducción sea consistente
             }
         }
     }
@@ -153,9 +170,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application),
                 stopProgressUpdates()
                 _uiState.update { state -> state.copy(isPlaying = false) }
             } else {
-                it.start()
-                startProgressUpdates()
-                _uiState.update { state -> state.copy(isPlaying = true) }
+                // Solo inicia si el reproductor está preparado
+                if (_uiState.value.totalDuration > 0) {
+                    it.start()
+                    startProgressUpdates()
+                    _uiState.update { state -> state.copy(isPlaying = true) }
+                }
             }
         }
     }
@@ -164,7 +184,11 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application),
         val currentState = _uiState.value
         if (currentState.songList.isEmpty()) return
         val currentIndex = currentState.songList.indexOf(currentState.currentSong)
-        val nextIndex = if (currentIndex == currentState.songList.size - 1) 0 else currentIndex + 1
+        if (currentIndex == -1 && currentState.songList.isNotEmpty()) {
+             playSong(currentState.songList.first()) // Si no hay canción actual, reproducir la primera
+             return
+        }
+        val nextIndex = if (currentIndex >= currentState.songList.size - 1) 0 else currentIndex + 1
         playSong(currentState.songList[nextIndex])
     }
 
@@ -172,7 +196,11 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application),
         val currentState = _uiState.value
         if (currentState.songList.isEmpty()) return
         val currentIndex = currentState.songList.indexOf(currentState.currentSong)
-        val prevIndex = if (currentIndex == 0) currentState.songList.size - 1 else currentIndex - 1
+        if (currentIndex == -1 && currentState.songList.isNotEmpty()) {
+             playSong(currentState.songList.first()) // Si no hay canción actual, reproducir la primera
+             return
+        }
+        val prevIndex = if (currentIndex <= 0) currentState.songList.size - 1 else currentIndex - 1
         playSong(currentState.songList[prevIndex])
     }
 
@@ -181,74 +209,21 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application),
         _uiState.update { it.copy(currentPosition = position) }
     }
 
-    // --- Lógica del Sensor de Proximidad ---
+    // --- Lógica del Sensor de Proximidad (Delegada) ---
 
     fun enableProximitySensor(enable: Boolean) {
-        if (proximitySensor == null) {
+        if (!sensorHelper.isSensorAvailable) {
             _uiState.update { it.copy(error = "Sensor de proximidad no disponible en este dispositivo.") }
             return
         }
 
         if (enable) {
-            sensorManager.registerListener(this, proximitySensor, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorHelper.startListening()
         } else {
-            sensorManager.unregisterListener(this)
+            sensorHelper.stopListening()
         }
         _uiState.update { it.copy(isProximitySensorEnabled = enable) }
     }
-
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event?.sensor?.type != Sensor.TYPE_PROXIMITY) return
-
-        val isCurrentlyNear = event.values[0] < (proximitySensor?.maximumRange ?: 5.0f)
-        val previousState = sensorState
-
-        if (isCurrentlyNear && previousState is ProximityState.Far) {
-            // Estado: Lejos -> Cerca
-            val now = System.currentTimeMillis()
-            sensorState = ProximityState.Near(startTime = now, longPressTriggered = false, wasPlaying = _uiState.value.isPlaying)
-            viewModelScope.launch {
-                delay(LONG_PRESS_THRESHOLD_MS)
-                // Comprueba si seguimos en el mismo estado "Cerca" tras el retardo
-                val stateAfterDelay = sensorState
-                if (stateAfterDelay is ProximityState.Near && stateAfterDelay.startTime == now) {
-                    // Es un gesto largo
-                    if (stateAfterDelay.wasPlaying) {
-                        togglePlayPause() // Pausa la música
-                    }
-                    sensorState = stateAfterDelay.copy(longPressTriggered = true)
-                }
-            }
-        } else if (!isCurrentlyNear && previousState is ProximityState.Near) {
-            // Estado: Cerca -> Lejos
-            sensorState = ProximityState.Far
-
-            if (previousState.longPressTriggered) {
-                // Si se activó el gesto largo, reanudamos la música
-                if (previousState.wasPlaying) {
-                    togglePlayPause() // Reanuda la música
-                }
-            } else {
-                // Si fue un gesto corto (un "wave")
-                waveCount++
-                waveHandlerJob?.cancel()
-                waveHandlerJob = viewModelScope.launch {
-                    delay(WAVE_RESET_TIMEOUT_MS)
-                    if (waveCount == 1) {
-                        skipNext()
-                    } else if (waveCount >= 2) {
-                        skipPrevious()
-                    }
-                    waveCount = 0 // Reinicia el contador tras la acción
-                }
-            }
-        }
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // No es necesario para este caso de uso.
-    }
-
 
     // --- Lógica de "Añadir a Playlist" ---
 
@@ -347,7 +322,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application),
     override fun onCleared() {
         mediaPlayer?.release()
         stopProgressUpdates()
-        sensorManager.unregisterListener(this)
+        sensorHelper.stopListening()
         super.onCleared()
     }
 }

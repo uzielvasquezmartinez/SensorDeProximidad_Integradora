@@ -8,8 +8,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
 
-    // TODO: UZIEL, MODIFICA ESTA URL POR LA DIRECCIÓN DE TU API
-    private const val BASE_URL = "http://192.168.100.25:5000/"
+    private const val BASE_URL = "http://192.168.100.26:5000/"
 
     // Creamos un interceptor de logging para ver las peticiones y respuestas en el Logcat
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

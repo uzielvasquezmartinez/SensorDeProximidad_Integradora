@@ -1,4 +1,4 @@
-package com.example.integradorasensorproximidad.ui.playlists
+package com.example.integradorasensorproximidad.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
