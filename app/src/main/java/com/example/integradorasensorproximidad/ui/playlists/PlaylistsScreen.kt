@@ -14,7 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.integradorasensorproximidad.data.model.Playlist
+import com.example.integradorasensorproximidad.ui.viewmodel.PlaylistsViewModel
+import com.example.integradorasensorproximidad.ui.viewmodel.PlaylistsUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

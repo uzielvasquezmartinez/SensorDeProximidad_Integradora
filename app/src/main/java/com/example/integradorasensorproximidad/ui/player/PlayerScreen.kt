@@ -22,6 +22,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.integradorasensorproximidad.data.model.Playlist
+import com.example.integradorasensorproximidad.ui.viewmodel.PlayerViewModel
+import com.example.integradorasensorproximidad.ui.viewmodel.PlayerUiState
 
 @Composable
 fun PlayerScreen(
