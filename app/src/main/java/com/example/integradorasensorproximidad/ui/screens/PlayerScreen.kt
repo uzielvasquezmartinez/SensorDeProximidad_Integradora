@@ -167,11 +167,16 @@ fun PlayerScreenContent(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight()
-                            .padding(16.dp),
+                            .fillMaxHeight(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Top
                     ) {
+
+                        ProximitySensorControl(
+                            isSensorEnabled = uiState.isProximitySensorEnabled,
+                            onToggleSensor = onToggleProximitySensor
+                        )
+
 
                         AlbumArt(
                             artSize = albumArtSize,
@@ -179,12 +184,6 @@ fun PlayerScreenContent(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         SongInfo(uiState.currentSong)
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        ProximitySensorControl(
-                            isSensorEnabled = uiState.isProximitySensorEnabled,
-                            onToggleSensor = onToggleProximitySensor
-                        )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -288,6 +287,11 @@ fun PlayerScreenContent(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
 
+                        ProximitySensorControl(
+                            isSensorEnabled = uiState.isProximitySensorEnabled,
+                            onToggleSensor = onToggleProximitySensor
+                        )
+
                         AlbumArt(
                             artSize = albumArtSize,
                             iconSize = albumIconSize
@@ -297,10 +301,7 @@ fun PlayerScreenContent(
                         SongInfo(uiState.currentSong)
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        ProximitySensorControl(
-                            isSensorEnabled = uiState.isProximitySensorEnabled,
-                            onToggleSensor = onToggleProximitySensor
-                        )
+
 
                         Spacer(modifier = Modifier.height(16.dp))
 

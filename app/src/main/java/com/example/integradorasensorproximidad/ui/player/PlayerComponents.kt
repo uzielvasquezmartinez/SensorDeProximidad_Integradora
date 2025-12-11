@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -31,10 +32,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
@@ -101,68 +104,191 @@ fun AlbumArt(
  */
 @Composable
 fun SongInfo(currentSong: Song?) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = currentSong?.title ?: "Canción Desconocida",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = Color(0XFFffffff)
-        )
-        Text(
-            text = currentSong?.artist ?: "Artista Desconocido",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color(0XFFffffff),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp) // opcional, para que no toque los bordes
+    ) {
+        // Calcular tamaños de fuente según el ancho disponible
+        val titleFontSize = (maxWidth.value / 10).sp
+        val artistFontSize = (maxWidth.value / 15).sp
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = currentSong?.title ?: "Canción Desconocida",
+                fontSize = titleFontSize,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = Color(0xFFFFFFFF),
+                textAlign = TextAlign.Center // asegura centrado
+            )
+            Text(
+                text = currentSong?.artist ?: "Artista Desconocido",
+                fontSize = artistFontSize,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = Color(0xFFFFFFFF),
+                textAlign = TextAlign.Center // asegura centrado
+            )
+        }
     }
 }
+
 
 /**
  * Muestra el slider de progreso y los tiempos de la canción.
  */
 @Composable
+
 fun SongProgress(
+
     currentPosition: Long,
+
     totalDuration: Long,
+
     onSeekStart: () -> Unit,
+
     onSeekFinished: (Long) -> Unit
+
 ) {
-    // Esta variable guarda la posición del slider SOLO mientras el usuario arrastra.
+
+// Detecta el tamaño de pantalla
+
+    val configuration = LocalConfiguration.current
+
+    val screenWidth = configuration.screenWidthDp
+
+// Tamaño responsivo del texto
+
+    val timeFontSize = when {
+
+        screenWidth < 360 -> 10.sp
+
+        screenWidth < 400 -> 12.sp
+
+        screenWidth < 500 -> 14.sp
+
+        else -> 16.sp
+
+    }
+
+// Grosor de la barra según pantalla
+
+    val sliderHeight = when {
+
+        screenWidth < 360 -> 2.dp
+
+        screenWidth < 400 -> 3.dp
+
+        else -> 4.dp
+
+    }
+
+// Padding responsivo
+
+    val horizontalPadding = when {
+
+        screenWidth < 360 -> 8.dp
+
+        screenWidth < 400 -> 12.dp
+
+        else -> 16.dp
+
+    }
+
     var sliderPosition by remember { mutableStateOf<Float?>(null) }
 
-    // El valor que se muestra es la posición del arrastre, o si no, la de la canción.
     val displayPosition = sliderPosition ?: currentPosition.toFloat()
 
-    Column {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontalPadding)) {
+
         Slider(
+
             value = displayPosition,
+
             onValueChange = {
+
                 if (sliderPosition == null) {
+
                     onSeekStart()
+
                 }
+
                 sliderPosition = it
+
             },
+
             onValueChangeFinished = {
+
                 sliderPosition?.let { onSeekFinished(it.toLong()) }
+
                 sliderPosition = null
+
             },
-            valueRange = 0f..totalDuration.toFloat().coerceAtLeast(0f),
-            modifier = Modifier.fillMaxWidth(),
+
+            valueRange = 0f..totalDuration.coerceAtLeast(0L).toFloat(),
+
+            modifier = Modifier
+
+                .fillMaxWidth()
+
+                .height(sliderHeight), // grosor responsivo
+
             colors = SliderDefaults.colors(
+
                 thumbColor = Color(0xFF00D1A7),
+
                 activeTrackColor = Color(0xFF00D1A7),
+
                 inactiveTrackColor = Color(0xFF00D1A7).copy(alpha = 0.3f)
+
             )
+
         )
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(text = formatDuration(displayPosition.toLong()), style = MaterialTheme.typography.bodySmall, color = Color(0XFFffffff))
-            Text(text = formatDuration(totalDuration), style = MaterialTheme.typography.bodySmall, color = Color(0XFFffffff))
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+
+            modifier = Modifier
+
+                .fillMaxWidth()
+
+                .padding(top = 4.dp),
+
+            horizontalArrangement = Arrangement.SpaceBetween
+
+        ) {
+
+
+            Text(
+
+                text = formatDuration(displayPosition.toLong()),
+
+                fontSize = timeFontSize,
+
+                color = Color.White
+
+            )
+
+            Text(
+
+                text = formatDuration(totalDuration),
+
+                fontSize = timeFontSize,
+
+                color = Color.White
+
+            )
+
         }
+
     }
+
 }
 
 
@@ -294,44 +420,58 @@ fun ProximitySensorControl(
 ) {
     val neonGreen = Color(0xFF00D1A7)
 
-    Row(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 12.dp, vertical = 6.dp) // menos padding vertical
     ) {
+        // Escalar elementos según ancho disponible
+        val scaleFactor = (maxWidth.value / 360).coerceIn(0.7f, 1f)
+        val iconSize = 24.dp * scaleFactor
+        val fontSize = 14.sp * scaleFactor
+        val spacerWidth = 8.dp * scaleFactor
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.Sensors,
-                contentDescription = "Sensor Icon",
-                tint = neonGreen
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
 
-            Text(
-                "Control por Gestos",
-                color = Color.White // Para que contraste con tu fondo oscuro
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Sensors,
+                    contentDescription = "Sensor Icon",
+                    tint = neonGreen,
+                    modifier = Modifier.size(iconSize)
+                )
+                Spacer(modifier = Modifier.width(spacerWidth))
+
+                Text(
+                    "Control por Gestos",
+                    color = Color.White,
+                    fontSize = fontSize,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Switch(
+                checked = isSensorEnabled,
+                onCheckedChange = onToggleSensor,
+                modifier = Modifier.scale(0.60f), // Switch más pequeño
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = neonGreen,
+                    checkedTrackColor = neonGreen.copy(alpha = 0.4f),
+                    uncheckedThumbColor = Color(0xFF4A4F57),
+                    uncheckedTrackColor = Color(0xFF2E343D),
+                    checkedBorderColor = Color.Transparent,
+                    uncheckedBorderColor = Color.Transparent
+                )
             )
         }
-
-        Switch(
-            checked = isSensorEnabled,
-            onCheckedChange = onToggleSensor,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = neonGreen,
-                checkedTrackColor = neonGreen.copy(alpha = 0.4f),
-
-                uncheckedThumbColor = Color(0xFF4A4F57),
-                uncheckedTrackColor = Color(0xFF2E343D),
-
-                checkedBorderColor = Color.Transparent,
-                uncheckedBorderColor = Color.Transparent
-            )
-        )
     }
 }
+
 
 /**
  * Formatea la duración de milisegundos a un formato "mm:ss".

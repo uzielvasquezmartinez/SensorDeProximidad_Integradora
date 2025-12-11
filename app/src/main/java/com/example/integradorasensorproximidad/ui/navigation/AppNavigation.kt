@@ -1,9 +1,11 @@
 package com.example.integradorasensorproximidad.ui.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MusicNote
@@ -23,9 +25,11 @@ import androidx.compose.ui.graphics.BlendMode.Companion.Screen
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -48,7 +52,7 @@ fun AppNavigation() {
     val playerViewModel: PlayerViewModel = viewModel()
 
     val barColor = Color(0xFF212121)
-    val accent = Color(0xFF00D1A7)
+    val accent = Color(0xA150B09C)
 
     Scaffold(
         bottomBar = {
@@ -56,42 +60,51 @@ fun AppNavigation() {
             val currentRoute = navBackStackEntry?.destination?.route
 
             if (screens.any { it.route == currentRoute }) {
+                BoxWithConstraints {
+                    val screenWidth = maxWidth
 
-                NavigationBar(
-                    modifier = Modifier
-                        .height(60.dp), // ← un poco más baja
-                    containerColor = barColor,
-                    contentColor = accent
-                ) {
-                    val currentDestination = navBackStackEntry?.destination
+                    // Altura y tamaños responsivos
+                    val barHeight = ((screenWidth.value / 6).coerceIn(50f, 70f)).dp
+                    val iconSize = ((screenWidth.value / 15).coerceIn(20f, 32f)).dp
+                    val fontSize = ((screenWidth.value / 30).coerceIn(10f, 14f)).sp
 
-                    screens.forEach { screen ->
-                        val selected =
-                            currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                    NavigationBar(
+                        modifier = Modifier.height(barHeight),
+                        containerColor = barColor,
+                        contentColor = accent
+                    ) {
+                        val currentDestination = navBackStackEntry?.destination
 
-                        NavigationBarItem(
-                            icon = {
-                                Icon(
-                                    screen.icon!!,
-                                    contentDescription = null,
-                                    tint = if (selected) accent else accent.copy(alpha = 0.55f)
-                                )
-                            },
-                            label = {
-                                Text(
-                                    screen.title!!,
-                                    color = if (selected) accent else accent.copy(alpha = 0.55f)
-                                )
-                            },
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                        screens.forEach { screen ->
+                            val selected =
+                                currentDestination?.hierarchy?.any { it.route == screen.route } == true
+
+                            NavigationBarItem(
+                                icon = {
+                                    Icon(
+                                        screen.icon!!,
+                                        contentDescription = null,
+                                        tint = if (selected) Color(0xA150B09C) else accent.copy(alpha = 0.55f),
+                                        modifier = Modifier.size(iconSize)
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        screen.title!!,
+                                        color = if (selected) Color(0xA150B09C) else accent.copy(alpha = 0.55f),
+                                        fontSize = fontSize
+                                    )
+                                },
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -131,6 +144,87 @@ fun AppNavigation() {
                 )
             }
         }
+    }
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun AppNavigationPreview() {
+    // Creamos un NavController simulado para el preview
+    val navController = rememberNavController()
+
+    // Usamos un ViewModel simulado o un Fake para el preview
+    val fakePlayerViewModel: PlayerViewModel = viewModel() // si tienes un constructor vacío o fake
+
+    // Llamamos a tu Composable
+    AppNavigationPreviewContent(
+        navController = navController,
+        playerViewModel = fakePlayerViewModel
+    )
+}
+
+// Separar el contenido de AppNavigation para inyectar NavController y ViewModel en el preview
+@Composable
+fun AppNavigationPreviewContent(
+    navController: NavHostController,
+    playerViewModel: PlayerViewModel
+) {
+    val screens = listOf(AppScreen.Player, AppScreen.Playlists)
+    val barColor = Color(0xFF212121)
+    val accent = Color(0xA150B09C)
+
+    Scaffold(
+        bottomBar = {
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
+
+            if (screens.any { it.route == currentRoute }) {
+                BoxWithConstraints {
+                    val screenWidth = maxWidth
+
+                    val barHeight = ((screenWidth.value / 6).coerceIn(50f, 70f)).dp
+                    val iconSize = ((screenWidth.value / 15).coerceIn(20f, 32f)).dp
+                    val fontSize = ((screenWidth.value / 30).coerceIn(10f, 14f)).sp
+
+                    NavigationBar(
+                        modifier = Modifier.height(barHeight),
+                        containerColor = barColor,
+                        contentColor = accent
+                    ) {
+                        val currentDestination = navBackStackEntry?.destination
+
+                        screens.forEach { screen ->
+                            val selected =
+                                currentDestination?.hierarchy?.any { it.route == screen.route } == true
+
+                            NavigationBarItem(
+                                icon = {
+                                    Icon(
+                                        screen.icon!!,
+                                        contentDescription = null,
+                                        tint = if (selected) Color(0xA150B09C) else accent.copy(alpha = 0.55f),
+                                        modifier = Modifier.size(iconSize)
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        screen.title!!,
+                                        color = if (selected) Color(0xA150B09C) else accent.copy(alpha = 0.55f),
+                                        fontSize = fontSize
+                                    )
+                                },
+                                selected = selected,
+                                onClick = { /* no necesitamos navegación en el preview */ }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+        // Solo mostramos un Box vacío en el preview, no necesitamos NavHost real
+        Box(modifier = Modifier.padding(innerPadding))
     }
 }
 
