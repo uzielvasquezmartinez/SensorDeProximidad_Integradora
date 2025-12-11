@@ -1,11 +1,13 @@
 package com.example.integradorasensorproximidad.ui.player
-
+import android.graphics.RenderEffect
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PauseCircle
-import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -13,9 +15,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
 import java.util.concurrent.TimeUnit
 
@@ -24,24 +38,49 @@ import java.util.concurrent.TimeUnit
  */
 @Composable
 fun AlbumArt(modifier: Modifier = Modifier) {
-    Card(
+
+    val accent = Color(0xFF00D1A7)
+
+    Box(
         modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(1f),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(8.dp)
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = "Album Art",
-                modifier = Modifier.size(120.dp),
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            .size(260.dp)
+            .shadow(
+                elevation = 25.dp,
+                shape = CircleShape,
+                ambientColor = accent.copy(alpha = 0.55f), // glow verde
+                spotColor = accent.copy(alpha = 0.55f)
             )
-        }
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        accent.copy(alpha = 0.35f),  // centro iluminado
+                        accent.copy(alpha = 0.10f),  // borde suave
+                        Color.Transparent            // disolución
+                    )
+                ),
+                shape = CircleShape
+            )
+            .padding(10.dp)
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        accent.copy(alpha = 0.45f),
+                        accent.copy(alpha = 0.25f)
+                    )
+                ),
+                shape = CircleShape
+            )
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.MusicNote,
+            contentDescription = "Album Art",
+            modifier = Modifier.size(140.dp),
+            tint = Color.White.copy(alpha = 0.75f)
+        )
     }
 }
-
 /**
  * Muestra el título y artista de la canción.
  */
@@ -174,4 +213,60 @@ fun formatDuration(ms: Long): String {
     val minutes = TimeUnit.MILLISECONDS.toMinutes(ms)
     val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) - TimeUnit.MINUTES.toSeconds(minutes)
     return String.format("%02d:%02d", minutes, seconds)
+}
+
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true
+)
+@Composable
+fun MusicPlayerPreview() {
+
+    val fakeSong = Song(
+        id = 5,
+        title = "Nightfall Memories",
+        artist = "Echo Dreams",
+        duration = 210_000L
+    )
+
+    // Estado falso para el switch del sensor en el preview
+    var sensorEnabled by remember { mutableStateOf(true) }
+
+    MaterialTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF212121))
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+
+        ) {
+            Spacer(modifier = Modifier.height(30.dp))
+            AlbumArt()
+            Spacer(modifier = Modifier.height(10.dp))
+            SongInfo(currentSong = fakeSong)
+
+            ProximitySensorControl(
+                isSensorEnabled = sensorEnabled,
+                onToggleSensor = { sensorEnabled = it },
+                modifier = Modifier.padding(top = 24.dp)
+            )
+
+            SongProgress(
+                currentPosition = 75_000L,
+                totalDuration = fakeSong.duration,
+                onSeekStart = {},
+                onSeekFinished = {}
+            )
+
+            PlayerControls(
+                isPlaying = false,
+                onTogglePlayPause = {},
+                onSkipNext = {},
+                onSkipPrevious = {}
+            )
+        }
+    }
 }
