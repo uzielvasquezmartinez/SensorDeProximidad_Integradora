@@ -18,9 +18,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
+import com.example.integradorasensorproximidad.ui.player.PlayerScreenContent
+import com.example.integradorasensorproximidad.ui.viewmodel.PlayerUiState
+import com.example.integradorasensorproximidad.ui.viewmodel.PlaylistsUiState
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,5 +93,40 @@ fun PlaylistDetailScreen(
                 }
             }
         }
+    }
+}
+
+// ------- PREVIEW -------
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun PlaylistsScreenContentPreview() {
+
+    // Playlists falsas
+    val fakePlaylists = listOf(
+        Playlist(id = 1, name = "Favoritas ", songIds = listOf(1, 2, 3)),
+        Playlist(id = 2, name = "Para Estudiar ", songIds = listOf(4, 5)),
+        Playlist(id = 3, name = "Rock", songIds = listOf(6, 7, 8))
+    )
+
+    val fakeUiState = PlaylistsUiState(
+        isLoading = false,
+        error = null,
+        playlists = fakePlaylists,
+        showCreateDialog = false,
+        playlistToDelete = null
+    )
+
+    MaterialTheme {
+        PlaylistsScreenContent(
+            uiState = fakeUiState,
+            onShowCreateDialog = {},
+            onConfirmCreate = {},
+            onDismissCreate = {},
+            onDeletePlaylistClick = {},
+            onConfirmDelete = {},
+            onDismissDelete = {},
+            onPlaylistClick = {}
+        )
     }
 }
