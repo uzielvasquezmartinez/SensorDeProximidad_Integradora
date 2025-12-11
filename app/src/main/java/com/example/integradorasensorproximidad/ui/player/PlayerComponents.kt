@@ -56,17 +56,17 @@ fun AlbumArt(modifier: Modifier = Modifier) {
         screenWidth >= 900 -> 340.dp   // pantallas grandes / tablets enormes
         screenWidth >= 700 -> 300.dp   // tablets
         screenWidth >= 500 -> 280.dp   // teléfonos grandes
-        else -> 260.dp                 // tamaño normal (tu valor original)
+        else -> 180.dp                 // tamaño normal (tu valor original)
     }
 
     // Tamaño del ícono responsivo
-    val iconSize = artSize * 0.30f    // proporcional, siempre *igual diseño*
+    val iconSize = 95.dp      // antes 140.dp
 
     Box(
         modifier = modifier
             .size(artSize)
             .shadow(
-                elevation = 25.dp,
+                elevation = 20.dp,
                 shape = CircleShape,
                 ambientColor = accent.copy(alpha = 0.55f),
                 spotColor = accent.copy(alpha = 0.30f)
@@ -81,7 +81,7 @@ fun AlbumArt(modifier: Modifier = Modifier) {
                 ),
                 shape = CircleShape
             )
-            .padding(10.dp)
+            .padding(8.dp)
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
@@ -91,7 +91,7 @@ fun AlbumArt(modifier: Modifier = Modifier) {
                 ),
                 shape = CircleShape
             )
-            .padding(24.dp),
+            .padding(18.dp),
         contentAlignment = Alignment.Center
     ) {
         Icon(
