@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
 import com.example.integradorasensorproximidad.data.repository.MusicRepository
-import com.example.integradorasensorproximidad.ui.navigation.PLAYLIST_ID_ARG
+import com.example.integradorasensorproximidad.ui.screens.PLAYLIST_ID_ARG
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow

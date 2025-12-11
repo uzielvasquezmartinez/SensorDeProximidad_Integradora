@@ -1,4 +1,4 @@
-package com.example.integradorasensorproximidad.ui.player
+package com.example.integradorasensorproximidad.ui.screens
 
 import android.Manifest
 import android.widget.Toast
@@ -23,9 +23,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
+import com.example.integradorasensorproximidad.ui.player.AlbumArt
+import com.example.integradorasensorproximidad.ui.player.PlayerControls
+import com.example.integradorasensorproximidad.ui.player.ProximitySensorControl
+import com.example.integradorasensorproximidad.ui.player.SongInfo
+import com.example.integradorasensorproximidad.ui.player.SongProgress
 import com.example.integradorasensorproximidad.ui.viewmodel.PlayerViewModel
 import com.example.integradorasensorproximidad.ui.viewmodel.PlayerUiState
 

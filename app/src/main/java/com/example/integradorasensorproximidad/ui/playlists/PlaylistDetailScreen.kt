@@ -23,10 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
-import com.example.integradorasensorproximidad.ui.player.PlayerScreenContent
-import com.example.integradorasensorproximidad.ui.viewmodel.PlayerUiState
 import com.example.integradorasensorproximidad.ui.viewmodel.PlaylistsUiState
-import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

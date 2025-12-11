@@ -1,4 +1,4 @@
-package com.example.integradorasensorproximidad.ui.navigation
+package com.example.integradorasensorproximidad.ui.screens
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
