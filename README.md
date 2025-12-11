@@ -48,3 +48,21 @@ Este proyecto ha sido desarrollado siguiendo estrictamente los lineamientos de l
   - **Double Wave (dos pasadas):** Regresa a la canción anterior.
 
 ---
+
+# Capturas de Pantalla
+
+| Pantalla Principal | Gestión de Playlists | Uso del Sensor (UI) |
+| :---: | :---: | :---: |
+| Pantalla Principal | Playlists | Servidor |
+
+---
+
+# Instalación y Releases
+
+El ejecutable firmado (`.apk`) se encuentra disponible en la sección **Releases** de este repositorio.
+
+1. Ve a la sección **Releases** del repositorio o [haz clic aquí](https://github.com/usuario/repositorio/releases).
+
+2. Descarga el archivo **app-release.apk** de la última versión disponible.
+3. Instálalo en tu dispositivo Android  
+   *(recuerda habilitar la opción de “instalar desde orígenes desconocidos” si se te solicita)*.
