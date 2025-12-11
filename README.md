@@ -1,14 +1,50 @@
-#Reproductor de Música con Gestos de Proximidad
-> **Proyecto Integrador - Desarrollo de Aplicaciones Móviles**
->
-> > **Cuatrimestre:** 4-D
-> **Fecha de entrega:** 11 de Diciembre del 2025
+# Reproductor de Música con Gestos de Proximidad
+**Proyecto Integrador — Desarrollo de Aplicaciones Móviles**
+
+> **Cuatrimestre:** 4-D  
+> **Fecha de entrega:** 11 de diciembre de 2025
+
+---
+
 ## Equipo de Desarrollo
 
 | Nombre Completo | Rol / Tareas Principales | Usuario GitHub |
 | :--- | :--- | :--- |
-| [Uziel Vasquez Martinez] | [Creador del repositorio, encargado de desarrollar el sensor y de la API REST] | @uzielvasquezmartinez |
-| [Gamaliel Martinez Villegas] | [Encargado del backend] | @GamalielMartinez777 |
-| [Dulce Yoselin Pedraza Ocampo] | [Encargada de crear las pantallas y diseño ] | @Dulce127 |
+| Uziel Vasquez Martinez | Creador del repositorio. Desarrollo del sensor de proximidad y de la API REST. | [@uzielvasquezmartinez](https://github.com/uzielvasquezmartinez) |
+| Gamaliel Leonel Martinez Villegas | Encargado del backend. | [@GamalielMartinez777](https://github.com/GamalielMartinez777) |
+| Dulce Yoselin Pedraza Ocampo | Encargada de las pantallas y diseño UI/UX. | [@Dulce127](https://github.com/Dulce127) |
 
-*Esta aplicación consiste en crear un reproducotor de musica atra ves de gestos con las manos*
+---
+
+# Descripción del Proyecto
+
+### ¿Qué hace la aplicación?
+Es un reproductor de música para Android que combina canciones locales del dispositivo con canciones disponibles en un servidor de red. La aplicación permite a los usuarios gestionar sus propias playlists (crearlas, borrarlas y añadirles canciones).
+
+Su característica principal es el **control por gestos**: el usuario puede pausar, reanudar, saltar o retroceder canciones sin tocar la pantalla, simplemente moviendo la mano sobre el sensor de proximidad del teléfono.
+
+### Objetivo
+Demostrar la implementación de una arquitectura robusta (**MVVM**) en Android, consumiendo una API REST propia con Retrofit para operaciones CRUD y utilizando el hardware del dispositivo (sensor de proximidad) para ofrecer una experiencia de usuario innovadora.
+
+---
+
+# Stack Tecnológico y Características
+
+Este proyecto ha sido desarrollado siguiendo estrictamente los lineamientos de la materia:
+
+- **Lenguaje:** Kotlin 100%.
+- **Interfaz de Usuario:** Jetpack Compose.
+- **Arquitectura:** MVVM (Model-View-ViewModel).
+- **Conectividad (API REST):** Retrofit consumiendo un servidor local hecho en Python (Flask).
+- **Métodos CRUD Implementados:**
+  - **GET:** Obtiene la lista de canciones del servidor y la lista de playlists.
+  - **POST:** Crea nuevas playlists y sube archivos `.mp3` de canciones locales al servidor para integrarlas.
+  - **PUT:** Actualiza una playlist existente (por ejemplo, al añadirle el ID de una nueva canción).
+  - **DELETE:** Elimina una playlist del servidor.
+- **Sensor Integrado:** Sensor de Proximidad.
+- **Uso del Sensor (Gestos Aéreos):**
+  - **Hover (dejar la mano encima):** Pausa la música. Al retirar la mano, se reanuda.
+  - **Wave (pasar la mano una vez):** Salta a la siguiente canción.
+  - **Double Wave (dos pasadas):** Regresa a la canción anterior.
+
+---
