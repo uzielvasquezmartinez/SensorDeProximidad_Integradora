@@ -60,7 +60,7 @@ fun AlbumArt(modifier: Modifier = Modifier) {
     }
 
     // Tamaño del ícono responsivo
-    val iconSize = artSize * 0.55f    // proporcional, siempre *igual diseño*
+    val iconSize = artSize * 0.30f    // proporcional, siempre *igual diseño*
 
     Box(
         modifier = modifier
@@ -69,7 +69,7 @@ fun AlbumArt(modifier: Modifier = Modifier) {
                 elevation = 25.dp,
                 shape = CircleShape,
                 ambientColor = accent.copy(alpha = 0.55f),
-                spotColor = accent.copy(alpha = 0.55f)
+                spotColor = accent.copy(alpha = 0.30f)
             )
             .background(
                 brush = Brush.radialGradient(
