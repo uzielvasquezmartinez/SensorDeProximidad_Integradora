@@ -53,7 +53,7 @@ Este proyecto ha sido desarrollado siguiendo estrictamente los lineamientos de l
 
 | Pantalla Principal | Gestión de Playlists | Uso del Sensor (UI) |
 | :---: | :---: | :---: |
-| Pantalla Principal | Playlists | Servidor |
+| Pantalla Principal | Playlists | [Servidor](https://github.com/user-attachments/assets/dbd094ba-f823-4839-a0da-3253799ac445) |
 
 ---
 
