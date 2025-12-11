@@ -31,7 +31,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
+import formatDuration
 import java.util.concurrent.TimeUnit
+import kotlin.text.toLong
 
 /**
  * Muestra una imagen grande para el arte del álbum (usando un placeholder).
@@ -92,12 +94,13 @@ fun SongInfo(currentSong: Song?) {
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            color = Color(0XFFffffff)
         )
         Text(
             text = currentSong?.artist ?: "Artista Desconocido",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color(0XFFffffff),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -114,14 +117,19 @@ fun SongProgress(
     onSeekStart: () -> Unit,
     onSeekFinished: (Long) -> Unit
 ) {
+    // Esta variable guarda la posición del slider SOLO mientras el usuario arrastra.
     var sliderPosition by remember { mutableStateOf<Float?>(null) }
+
+    // El valor que se muestra es la posición del arrastre, o si no, la de la canción.
     val displayPosition = sliderPosition ?: currentPosition.toFloat()
 
     Column {
         Slider(
             value = displayPosition,
             onValueChange = {
-                if (sliderPosition == null) onSeekStart()
+                if (sliderPosition == null) {
+                    onSeekStart()
+                }
                 sliderPosition = it
             },
             onValueChangeFinished = {
@@ -129,11 +137,17 @@ fun SongProgress(
                 sliderPosition = null
             },
             valueRange = 0f..totalDuration.toFloat().coerceAtLeast(0f),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = SliderDefaults.colors(
+                thumbColor = Color(0xFF00D1A7),
+                activeTrackColor = Color(0xFF00D1A7),
+                inactiveTrackColor = Color(0xFF00D1A7).copy(alpha = 0.3f)
+            )
         )
+
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(text = formatDuration(displayPosition.toLong()), style = MaterialTheme.typography.bodySmall)
-            Text(text = formatDuration(totalDuration), style = MaterialTheme.typography.bodySmall)
+            Text(text = formatDuration(displayPosition.toLong()), style = MaterialTheme.typography.bodySmall, color = Color(0XFFffffff))
+            Text(text = formatDuration(totalDuration), style = MaterialTheme.typography.bodySmall, color = Color(0XFFffffff))
         }
     }
 }
