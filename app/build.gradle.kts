@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.compose.material3.window.size.class1)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
