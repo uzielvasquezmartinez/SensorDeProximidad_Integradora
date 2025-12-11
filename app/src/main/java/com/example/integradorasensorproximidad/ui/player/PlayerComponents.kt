@@ -40,33 +40,25 @@ import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
 import java.util.concurrent.TimeUnit
 import kotlin.text.toLong
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Muestra una imagen grande para el arte del álbum (usando un placeholder).
  */
 @Composable
-fun AlbumArt(modifier: Modifier = Modifier) {
+fun AlbumArt(
+    modifier: Modifier = Modifier,
+    artSize: Dp,
+    iconSize: Dp
+) {
 
     val accent = Color(0xFF00D1A7)
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp
-
-    // Tamaño responsivo de la burbuja
-    val artSize = when {
-        screenWidth >= 900 -> 340.dp   // pantallas grandes / tablets enormes
-        screenWidth >= 700 -> 300.dp   // tablets
-        screenWidth >= 500 -> 280.dp   // teléfonos grandes
-        else -> 180.dp                 // tamaño normal (tu valor original)
-    }
-
-    // Tamaño del ícono responsivo
-    val iconSize = 95.dp      // antes 140.dp
 
     Box(
         modifier = modifier
             .size(artSize)
             .shadow(
-                elevation = 20.dp,
+                elevation = 25.dp,
                 shape = CircleShape,
                 ambientColor = accent.copy(alpha = 0.55f),
                 spotColor = accent.copy(alpha = 0.30f)
@@ -81,7 +73,7 @@ fun AlbumArt(modifier: Modifier = Modifier) {
                 ),
                 shape = CircleShape
             )
-            .padding(8.dp)
+            .padding(10.dp)
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
@@ -91,7 +83,7 @@ fun AlbumArt(modifier: Modifier = Modifier) {
                 ),
                 shape = CircleShape
             )
-            .padding(18.dp),
+            .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -102,6 +94,7 @@ fun AlbumArt(modifier: Modifier = Modifier) {
         )
     }
 }
+
 
 /**
  * Muestra el título y artista de la canción.
@@ -181,24 +174,10 @@ fun PlayerControls(
     isPlaying: Boolean,
     onTogglePlayPause: () -> Unit,
     onSkipNext: () -> Unit,
-    onSkipPrevious: () -> Unit
+    onSkipPrevious: () -> Unit,
+    mainSize: Dp,
+    secondarySize: Dp
 ) {
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp
-
-    // Tamaños responsivos
-    val smallBtn = when {
-        screenWidth >= 900 -> 95.dp
-        screenWidth >= 700 -> 85.dp
-        else -> 70.dp
-    }
-
-    val bigBtn = when {
-        screenWidth >= 900 -> 140.dp
-        screenWidth >= 700 -> 120.dp
-        else -> 100.dp
-    }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -208,21 +187,21 @@ fun PlayerControls(
     ) {
 
         FloatingGlowButton(
-            size = smallBtn,
+            size = secondarySize,
             icon = Icons.Default.SkipPrevious,
             onClick = onSkipPrevious,
         )
 
         FloatingGlowButton(
+            size = mainSize,
             icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
             onClick = onTogglePlayPause,
-            size = bigBtn
         )
 
         FloatingGlowButton(
+            size = secondarySize,
             icon = Icons.Default.SkipNext,
             onClick = onSkipNext,
-            size = smallBtn
         )
     }
 }
@@ -392,7 +371,10 @@ fun MusicPlayerPreview() {
 
         ) {
             Spacer(modifier = Modifier.height(30.dp))
-            AlbumArt()
+            /*AlbumArt(
+                artSize = albumArtSize,
+                iconSize = albumIconSize
+            )*/
             Spacer(modifier = Modifier.height(10.dp))
             SongInfo(currentSong = fakeSong)
 
@@ -413,8 +395,15 @@ fun MusicPlayerPreview() {
                 isPlaying = false,
                 onTogglePlayPause = {},
                 onSkipNext = {},
-                onSkipPrevious = {}
+                onSkipPrevious = {},
+                10.dp,
+                10.dp
             )
         }
     }
 }
+
+//AlbumArt(
+//    artSize = albumArtSize,
+//    iconSize = albumIconSize
+//)

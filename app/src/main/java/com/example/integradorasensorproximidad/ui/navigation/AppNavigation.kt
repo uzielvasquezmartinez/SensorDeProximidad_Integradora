@@ -2,6 +2,7 @@ package com.example.integradorasensorproximidad.ui.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -17,8 +18,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode.Companion.Color
 import androidx.compose.ui.graphics.BlendMode.Companion.Screen
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -43,18 +47,43 @@ fun AppNavigation() {
     // Creamos el ViewModel aquí para que sea compartido por todas las pantallas que lo necesiten.
     val playerViewModel: PlayerViewModel = viewModel()
 
+    val barColor = Color(0xFF212121)
+    val accent = Color(0xFF00D1A7)
+
     Scaffold(
         bottomBar = {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
+
             if (screens.any { it.route == currentRoute }) {
-                NavigationBar {
+
+                NavigationBar(
+                    modifier = Modifier
+                        .height(60.dp), // ← un poco más baja
+                    containerColor = barColor,
+                    contentColor = accent
+                ) {
                     val currentDestination = navBackStackEntry?.destination
+
                     screens.forEach { screen ->
+                        val selected =
+                            currentDestination?.hierarchy?.any { it.route == screen.route } == true
+
                         NavigationBarItem(
-                            icon = { Icon(screen.icon!!, contentDescription = null) },
-                            label = { Text(screen.title!!) },
-                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            icon = {
+                                Icon(
+                                    screen.icon!!,
+                                    contentDescription = null,
+                                    tint = if (selected) accent else accent.copy(alpha = 0.55f)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    screen.title!!,
+                                    color = if (selected) accent else accent.copy(alpha = 0.55f)
+                                )
+                            },
+                            selected = selected,
                             onClick = {
                                 navController.navigate(screen.route) {
                                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -67,7 +96,8 @@ fun AppNavigation() {
                 }
             }
         }
-    ) { innerPadding ->
+    )
+ { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = AppScreen.Player.route,

@@ -1,6 +1,7 @@
 package com.example.integradorasensorproximidad.ui.screens
 
 import android.Manifest
+import android.content.res.Configuration
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -126,6 +127,20 @@ fun PlayerScreenContent(
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
 
+    val screenHeightDp = configuration.screenHeightDp
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+// Responsividad
+    val albumArtSize = if (isLandscape) screenHeightDp.dp * 0.35f else 200.dp
+    val albumIconSize = if (isLandscape) screenHeightDp.dp * 0.12f else 120.dp
+
+    val buttonSizeMain = if (isLandscape) screenHeightDp.dp * 0.18f else 100.dp
+    val buttonSizeSecondary = if (isLandscape) screenHeightDp.dp * 0.12f else 70.dp
+
+    val verticalSpacing = if (isLandscape) 8.dp else 16.dp
+    val outerPadding = if (isLandscape) 12.dp else 24.dp
+
+
     val isTablet = screenWidthDp >= 700   // ← punto de quiebre para mostrar 2 columnas
 
     Box(
@@ -158,7 +173,10 @@ fun PlayerScreenContent(
                         verticalArrangement = Arrangement.Top
                     ) {
 
-                        AlbumArt()
+                        AlbumArt(
+                            artSize = albumArtSize,
+                            iconSize = albumIconSize
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
                         SongInfo(uiState.currentSong)
                         Spacer(modifier = Modifier.height(10.dp))
@@ -183,8 +201,11 @@ fun PlayerScreenContent(
                             isPlaying = uiState.isPlaying,
                             onTogglePlayPause = onTogglePlayPause,
                             onSkipNext = onSkipNext,
-                            onSkipPrevious = onSkipPrevious
+                            onSkipPrevious = onSkipPrevious,
+                            mainSize = buttonSizeMain,
+                            secondarySize = buttonSizeSecondary
                         )
+
                     }
 
                     // Columna derecha → Lista de canciones
@@ -267,7 +288,11 @@ fun PlayerScreenContent(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
 
-                        AlbumArt()
+                        AlbumArt(
+                            artSize = albumArtSize,
+                            iconSize = albumIconSize
+                        )
+
                         Spacer(modifier = Modifier.height(16.dp))
                         SongInfo(uiState.currentSong)
                         Spacer(modifier = Modifier.height(10.dp))
@@ -292,7 +317,9 @@ fun PlayerScreenContent(
                             isPlaying = uiState.isPlaying,
                             onTogglePlayPause = onTogglePlayPause,
                             onSkipNext = onSkipNext,
-                            onSkipPrevious = onSkipPrevious
+                            onSkipPrevious = onSkipPrevious,
+                            90.dp,
+                            65.dp
                         )
                     }
 
