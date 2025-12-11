@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
 import com.example.integradorasensorproximidad.ui.viewmodel.PlayerViewModel
@@ -140,7 +141,6 @@ fun PlayerScreenContent(
                     verticalArrangement = Arrangement.SpaceEvenly
                 ) {
 
-                    Spacer(modifier = Modifier.height(16.dp))
                     AlbumArt()
                     Spacer(modifier = Modifier.height(16.dp))
                     SongInfo(currentSong = uiState.currentSong)
@@ -169,72 +169,72 @@ fun PlayerScreenContent(
                     ) {
 
                         PlayerControls(
-                            isPlaying = false,
-                            onTogglePlayPause = {},
-                            onSkipNext = {},
-                            onSkipPrevious = {}
+                            isPlaying = uiState.isPlaying,
+                            onTogglePlayPause = onTogglePlayPause,
+                            onSkipNext = onSkipNext,
+                            onSkipPrevious = onSkipPrevious
                         )
+
+
                     }
                 }
 
                 // --- Lista de canciones ---
-                Column(modifier = Modifier.weight(1f)) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(uiState.songList) { song ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(uiState.songList) { song ->
 
-                            val isCurrentSong = uiState.currentSong?.id == song.id
+                        val isCurrentSong = uiState.currentSong?.id == song.id
 
-                            val bubbleColor =
-                                if (isCurrentSong) Color(0xFF00D1A7)          // activa
-                                else Color(0xFF00D1A7).copy(alpha = 0.45f)    // inactiva
+                        val bubbleColor =
+                            if (isCurrentSong) Color(0xFF00D1A7)          // activa
+                            else Color(0xFF00D1A7).copy(alpha = 0.45f)    // inactiva
 
-                            val textColor =
-                                if (isCurrentSong) Color.Black
-                                else Color.Black.copy(alpha = 0.8f)
+                        val textColor =
+                            if (isCurrentSong) Color.Black
+                            else Color.Black.copy(alpha = 0.8f)
 
-                            Card(
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(65.dp)
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                .clickable { onPlaySong(song) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = bubbleColor
+                            ),
+                            shape = RoundedCornerShape(24.dp),               // burbuja
+                            elevation = CardDefaults.cardElevation(6.dp)     // sombra tipo burbuja
+                        ) {
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(65.dp)
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                                    .clickable { onPlaySong(song) },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = bubbleColor
-                                ),
-                                shape = RoundedCornerShape(24.dp),               // burbuja
-                                elevation = CardDefaults.cardElevation(6.dp)     // sombra tipo burbuja
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "${song.title} - ${song.artist}",
-                                        color = textColor,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        fontWeight = if (isCurrentSong) FontWeight.Bold else FontWeight.Normal,
-                                        modifier = Modifier.weight(1f)
-                                    )
+                                Text(
+                                    text = "${song.title} - ${song.artist}",
+                                    color = textColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontWeight = if (isCurrentSong) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.weight(1f)
+                                )
 
-                                    IconButton(onClick = { onAddSongClicked(song) }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = "Añadir a Playlist",
-                                            tint = textColor
-                                        )
-                                    }
+                                IconButton(onClick = { onAddSongClicked(song) }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Añadir a Playlist",
+                                        tint = textColor
+                                    )
                                 }
                             }
                         }
                     }
                 }
+
 
             }
         } else {

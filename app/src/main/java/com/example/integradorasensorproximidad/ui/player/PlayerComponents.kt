@@ -1,7 +1,10 @@
 package com.example.integradorasensorproximidad.ui.player
 import android.graphics.RenderEffect
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -24,11 +27,13 @@ import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
 import java.util.concurrent.TimeUnit
@@ -173,22 +178,19 @@ fun PlayerControls(
     ) {
 
         FloatingGlowButton(
+            size = 70.dp,
             icon = Icons.Default.SkipPrevious,
-            //contentDescription = "Anterior",
             onClick = onSkipPrevious,
-            size = 70.dp
         )
 
         FloatingGlowButton(
             icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-            //contentDescription = "Play/Pausa",
             onClick = onTogglePlayPause,
             size = 100.dp
         )
 
         FloatingGlowButton(
             icon = Icons.Default.SkipNext,
-            //contentDescription = "Siguiente",
             onClick = onSkipNext,
             size = 70.dp
         )
@@ -205,34 +207,49 @@ fun FloatingGlowButton(
     Box(
         modifier = Modifier
             .size(size)
-            .shadow(
-                elevation = 10.dp,
-                shape = CircleShape,
-                ambientColor = accent.copy(alpha = 0.55f),
-                spotColor = accent.copy(alpha = 0.55f)
-            )
-            .background(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        accent.copy(alpha = 0.35f),
-                        accent.copy(alpha = 0.15f),
-                        Color.Transparent
-                    )
-                )
-            )
-            .padding(8.dp)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        accent.copy(alpha = 0.55f),
-                        accent.copy(alpha = 0.25f)
-                    )
-                ),
-                shape = CircleShape
-            ),
+            .zIndex(1f),
         contentAlignment = Alignment.Center
     ) {
-        IconButton(onClick = onClick) {
+        // --- Glow + sombra (detrás) ---
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .shadow(
+                    elevation = 10.dp,
+                    shape = CircleShape,
+                    ambientColor = accent.copy(alpha = 0.55f),
+                    spotColor = accent.copy(alpha = 0.55f)
+                )
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            accent.copy(alpha = 0.35f),
+                            accent.copy(alpha = 0.15f),
+                            Color.Transparent
+                        )
+                    ),
+                    shape = CircleShape
+                )
+        )
+
+        // --- Burbuja interior (gradiente) ---
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(8.dp)
+                .clip(CircleShape)
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            accent.copy(alpha = 0.55f),
+                            accent.copy(alpha = 0.25f)
+                        )
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Icon (visual)
             Icon(
                 imageVector = icon,
                 contentDescription = null,
@@ -240,8 +257,22 @@ fun FloatingGlowButton(
                 modifier = Modifier.size(size * 0.5f)
             )
         }
+
+        // --- Capa clicable POR ENCIMA de todo (captura el touch) ---
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(0.dp) // si quieres aumentar área táctil pon padding negativo/no necesario
+                .clip(CircleShape)
+                .clickable(
+                    onClick = onClick,
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                )
+        )
     }
 }
+
 
 /**
  * Componente para activar/desactivar el control por gestos del sensor.
