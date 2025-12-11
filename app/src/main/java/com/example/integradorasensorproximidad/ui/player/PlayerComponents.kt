@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.integradorasensorproximidad.data.model.Playlist
 import com.example.integradorasensorproximidad.data.model.Song
-import formatDuration
 import java.util.concurrent.TimeUnit
 import kotlin.text.toLong
 
@@ -253,6 +252,8 @@ fun ProximitySensorControl(
     onToggleSensor: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val neonGreen = Color(0xFF00D1A7)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -260,18 +261,37 @@ fun ProximitySensorControl(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(imageVector = Icons.Default.Sensors, contentDescription = "Sensor Icon")
+            Icon(
+                imageVector = Icons.Default.Sensors,
+                contentDescription = "Sensor Icon",
+                tint = neonGreen
+            )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Control por Gestos")
+
+            Text(
+                "Control por Gestos",
+                color = Color.White // Para que contraste con tu fondo oscuro
+            )
         }
+
         Switch(
             checked = isSensorEnabled,
-            onCheckedChange = onToggleSensor
+            onCheckedChange = onToggleSensor,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = neonGreen,
+                checkedTrackColor = neonGreen.copy(alpha = 0.4f),
+
+                uncheckedThumbColor = Color(0xFF4A4F57),
+                uncheckedTrackColor = Color(0xFF2E343D),
+
+                checkedBorderColor = Color.Transparent,
+                uncheckedBorderColor = Color.Transparent
+            )
         )
     }
 }
-
 
 /**
  * Formatea la duración de milisegundos a un formato "mm:ss".
