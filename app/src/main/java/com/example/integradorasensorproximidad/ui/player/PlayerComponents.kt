@@ -152,6 +152,7 @@ fun SongProgress(
     }
 }
 
+
 /**
  * Muestra los botones de control del reproductor.
  */
@@ -162,30 +163,82 @@ fun PlayerControls(
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit
 ) {
+    val accent = Color(0xFF00D1A7)
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onSkipPrevious, modifier = Modifier.size(56.dp)) {
-            Icon(
-                imageVector = Icons.Default.SkipPrevious,
-                contentDescription = "Anterior",
-                modifier = Modifier.fillMaxSize()
+
+        FloatingGlowButton(
+            icon = Icons.Default.SkipPrevious,
+            //contentDescription = "Anterior",
+            onClick = onSkipPrevious,
+            size = 70.dp
+        )
+
+        FloatingGlowButton(
+            icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+            //contentDescription = "Play/Pausa",
+            onClick = onTogglePlayPause,
+            size = 100.dp
+        )
+
+        FloatingGlowButton(
+            icon = Icons.Default.SkipNext,
+            //contentDescription = "Siguiente",
+            onClick = onSkipNext,
+            size = 70.dp
+        )
+    }
+}
+
+@Composable
+fun FloatingGlowButton(
+    size: Dp,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    accent: Color = Color(0xFF00D1A7)
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .shadow(
+                elevation = 10.dp,
+                shape = CircleShape,
+                ambientColor = accent.copy(alpha = 0.55f),
+                spotColor = accent.copy(alpha = 0.55f)
             )
-        }
-        IconButton(onClick = onTogglePlayPause, modifier = Modifier.size(72.dp)) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Default.PauseCircle else Icons.Default.PlayCircle,
-                contentDescription = "Reproducir/Pausar",
-                modifier = Modifier.fillMaxSize()
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        accent.copy(alpha = 0.35f),
+                        accent.copy(alpha = 0.15f),
+                        Color.Transparent
+                    )
+                )
             )
-        }
-        IconButton(onClick = onSkipNext, modifier = Modifier.size(56.dp)) {
+            .padding(8.dp)
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        accent.copy(alpha = 0.55f),
+                        accent.copy(alpha = 0.25f)
+                    )
+                ),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        IconButton(onClick = onClick) {
             Icon(
-                imageVector = Icons.Default.SkipNext,
-                contentDescription = "Siguiente",
-                modifier = Modifier.fillMaxSize()
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.size(size * 0.5f)
             )
         }
     }
