@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -118,55 +119,61 @@ fun PlayerScreenContent(
     onToggleProximitySensor: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val configuration = LocalConfiguration.current
+    val screenWidthDp = configuration.screenWidthDp
+
+    val isTablet = screenWidthDp >= 700   // ← punto de quiebre para mostrar 2 columnas
+
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFF212121)),
         contentAlignment = Alignment.Center
     ) {
-        if (uiState.permissionGranted) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF212121))
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
 
-            ) {
-                // --- Sección del Reproductor ---
-                Column(
+        if (uiState.permissionGranted) {
+
+            if (isTablet) {
+                // ----------------------------------------------------------
+                //  TABLET → 2 columnas: reproductor | lista canciones
+                // ----------------------------------------------------------
+                Row(
                     modifier = Modifier
-                        .fillMaxWidth()               // ← evita que se aplaste
-                        .padding(horizontal = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceEvenly
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
 
-                    AlbumArt()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SongInfo(currentSong = uiState.currentSong)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    ProximitySensorControl(
-                        isSensorEnabled = uiState.isProximitySensorEnabled,
-                        onToggleSensor = onToggleProximitySensor
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    SongProgress(
-                        currentPosition = uiState.currentPosition,
-                        totalDuration = uiState.totalDuration,
-                        onSeekStart = { },
-                        onSeekFinished = { position -> onSeekTo(position) }
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Box(
+                    // Columna izquierda → Reproductor
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 70.dp),      // ← asegura que los botones NO se aplasten
-                        contentAlignment = Alignment.Center
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Top
                     ) {
+
+                        AlbumArt()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SongInfo(uiState.currentSong)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        ProximitySensorControl(
+                            isSensorEnabled = uiState.isProximitySensorEnabled,
+                            onToggleSensor = onToggleProximitySensor
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        SongProgress(
+                            currentPosition = uiState.currentPosition,
+                            totalDuration = uiState.totalDuration,
+                            onSeekStart = {},
+                            onSeekFinished = onSeekTo
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         PlayerControls(
                             isPlaying = uiState.isPlaying,
@@ -174,82 +181,183 @@ fun PlayerScreenContent(
                             onSkipNext = onSkipNext,
                             onSkipPrevious = onSkipPrevious
                         )
-
-
                     }
-                }
 
-                // --- Lista de canciones ---
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(uiState.songList) { song ->
+                    // Columna derecha → Lista de canciones
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    ) {
+                        items(uiState.songList) { song ->
 
-                        val isCurrentSong = uiState.currentSong?.id == song.id
+                            val isCurrent = uiState.currentSong?.id == song.id
 
-                        val bubbleColor =
-                            if (isCurrentSong) Color(0xFF00D1A7)          // activa
-                            else Color(0xFF00D1A7).copy(alpha = 0.45f)    // inactiva
+                            val bubbleColor = if (isCurrent)
+                                Color(0xFF00D1A7)
+                            else
+                                Color(0xFF00D1A7).copy(alpha = 0.45f)
 
-                        val textColor =
-                            if (isCurrentSong) Color.Black
-                            else Color.Black.copy(alpha = 0.8f)
+                            val textColor = if (isCurrent)
+                                Color.Black
+                            else
+                                Color.Black.copy(alpha = 0.8f)
 
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(65.dp)
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                                .clickable { onPlaySong(song) },
-                            colors = CardDefaults.cardColors(
-                                containerColor = bubbleColor
-                            ),
-                            shape = RoundedCornerShape(24.dp),               // burbuja
-                            elevation = CardDefaults.cardElevation(6.dp)     // sombra tipo burbuja
-                        ) {
-                            Row(
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                    .height(65.dp)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .clickable { onPlaySong(song) },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = bubbleColor
+                                ),
+                                shape = RoundedCornerShape(24.dp),
+                                elevation = CardDefaults.cardElevation(6.dp)
                             ) {
-                                Text(
-                                    text = "${song.title} - ${song.artist}",
-                                    color = textColor,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontWeight = if (isCurrentSong) FontWeight.Bold else FontWeight.Normal,
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                IconButton(onClick = { onAddSongClicked(song) }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "Añadir a Playlist",
-                                        tint = textColor
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "${song.title} - ${song.artist}",
+                                        color = textColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                        modifier = Modifier.weight(1f)
                                     )
+
+                                    IconButton(onClick = { onAddSongClicked(song) }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Añadir a Playlist",
+                                            tint = textColor
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
+            } else {
+                // ----------------------------------------------------------
+                //  TELÉFONO → diseño actual (no se toca)
+                // ----------------------------------------------------------
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
 
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        AlbumArt()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SongInfo(uiState.currentSong)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        ProximitySensorControl(
+                            isSensorEnabled = uiState.isProximitySensorEnabled,
+                            onToggleSensor = onToggleProximitySensor
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        SongProgress(
+                            currentPosition = uiState.currentPosition,
+                            totalDuration = uiState.totalDuration,
+                            onSeekStart = {},
+                            onSeekFinished = onSeekTo
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        PlayerControls(
+                            isPlaying = uiState.isPlaying,
+                            onTogglePlayPause = onTogglePlayPause,
+                            onSkipNext = onSkipNext,
+                            onSkipPrevious = onSkipPrevious
+                        )
+                    }
+
+                    // Lista canciones
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(uiState.songList) { song ->
+
+                            val isCurrent = uiState.currentSong?.id == song.id
+
+                            val bubbleColor = if (isCurrent)
+                                Color(0xFF00D1A7)
+                            else
+                                Color(0xFF00D1A7).copy(alpha = 0.45f)
+
+                            val textColor = if (isCurrent)
+                                Color.Black
+                            else
+                                Color.Black.copy(alpha = 0.8f)
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(65.dp)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .clickable { onPlaySong(song) },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = bubbleColor
+                                ),
+                                shape = RoundedCornerShape(24.dp),
+                                elevation = CardDefaults.cardElevation(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "${song.title} - ${song.artist}",
+                                        color = textColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    IconButton(onClick = { onAddSongClicked(song) }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Añadir a Playlist",
+                                            tint = textColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
         } else {
             Text(
-                "Se necesita permiso para acceder a la música. Por favor, otórguelo en la configuración de la aplicación.",
+                "Se necesita permiso para acceder a la música. Por favor, otórguelo en ajustes.",
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-
-        if (uiState.showAddToPlaylistDialog) {
-            AddToPlaylistDialog(
-                playlists = uiState.availablePlaylists,
-                onPlaylistSelected = onAddSongToPlaylist,
-                onDismiss = onDismissAddToPlaylistDialog
+                modifier = Modifier.padding(16.dp),
+                color = Color.White
             )
         }
     }

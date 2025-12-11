@@ -1,4 +1,5 @@
 package com.example.integradorasensorproximidad.ui.player
+import adaptiveDp
 import android.graphics.RenderEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,22 +48,35 @@ import kotlin.text.toLong
 fun AlbumArt(modifier: Modifier = Modifier) {
 
     val accent = Color(0xFF00D1A7)
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+
+    // Tamaño responsivo de la burbuja
+    val artSize = when {
+        screenWidth >= 900 -> 340.dp   // pantallas grandes / tablets enormes
+        screenWidth >= 700 -> 300.dp   // tablets
+        screenWidth >= 500 -> 280.dp   // teléfonos grandes
+        else -> 260.dp                 // tamaño normal (tu valor original)
+    }
+
+    // Tamaño del ícono responsivo
+    val iconSize = artSize * 0.55f    // proporcional, siempre *igual diseño*
 
     Box(
         modifier = modifier
-            .size(260.dp)
+            .size(artSize)
             .shadow(
                 elevation = 25.dp,
                 shape = CircleShape,
-                ambientColor = accent.copy(alpha = 0.55f), // glow verde
+                ambientColor = accent.copy(alpha = 0.55f),
                 spotColor = accent.copy(alpha = 0.55f)
             )
             .background(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        accent.copy(alpha = 0.35f),  // centro iluminado
-                        accent.copy(alpha = 0.10f),  // borde suave
-                        Color.Transparent            // disolución
+                        accent.copy(alpha = 0.35f),
+                        accent.copy(alpha = 0.10f),
+                        Color.Transparent
                     )
                 ),
                 shape = CircleShape
@@ -82,11 +97,12 @@ fun AlbumArt(modifier: Modifier = Modifier) {
         Icon(
             imageVector = Icons.Default.MusicNote,
             contentDescription = "Album Art",
-            modifier = Modifier.size(140.dp),
+            modifier = Modifier.size(iconSize),
             tint = Color.White.copy(alpha = 0.75f)
         )
     }
 }
+
 /**
  * Muestra el título y artista de la canción.
  */
@@ -167,7 +183,21 @@ fun PlayerControls(
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit
 ) {
-    val accent = Color(0xFF00D1A7)
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+
+    // Tamaños responsivos
+    val smallBtn = when {
+        screenWidth >= 900 -> 95.dp
+        screenWidth >= 700 -> 85.dp
+        else -> 70.dp
+    }
+
+    val bigBtn = when {
+        screenWidth >= 900 -> 140.dp
+        screenWidth >= 700 -> 120.dp
+        else -> 100.dp
+    }
 
     Row(
         modifier = Modifier
@@ -178,7 +208,7 @@ fun PlayerControls(
     ) {
 
         FloatingGlowButton(
-            size = 70.dp,
+            size = smallBtn,
             icon = Icons.Default.SkipPrevious,
             onClick = onSkipPrevious,
         )
@@ -186,13 +216,13 @@ fun PlayerControls(
         FloatingGlowButton(
             icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
             onClick = onTogglePlayPause,
-            size = 100.dp
+            size = bigBtn
         )
 
         FloatingGlowButton(
             icon = Icons.Default.SkipNext,
             onClick = onSkipNext,
-            size = 70.dp
+            size = smallBtn
         )
     }
 }
